@@ -25,9 +25,9 @@ npm install -g pm2
 echo "[$(date)] PM2 installed"
 
 git clone ${app_repo_url} /app
-cd /app
+cd /app/app
 
-echo "[$(date)] App cloned"
+echo "[$(date)] App cloned. Contents: $(ls -la)"
 
 npm ci --prefer-offline
 npm run build
