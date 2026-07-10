@@ -28,3 +28,14 @@ export function getUserFromRequest(req: NextRequest): { userId: number; email: s
   if (!token) return null;
   return verifyToken(token);
 }
+
+/**
+ * Determines whether the auth cookie should have the Secure flag.
+ * Secure cookies are only set when the connection is HTTPS, either
+ * directly (nextUrl.protocol) or via a proxy (x-forwarded-proto).
+ * This avoids issues where secure cookies are silently rejected
+ * by browsers over plain HTTP (e.g., EC2 without HTTPS).
+ */
+export function shouldUseSecureCookie(req: NextRequest): boolean {
+  return req.headers.get('x-forwarded-proto') === 'https' || req.nextUrl.protocol === 'https:';
+}

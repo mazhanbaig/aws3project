@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { signToken } from '@/lib/auth';
+import { signToken, shouldUseSecureCookie } from '@/lib/auth';
 import { verifyPassword } from '@/lib/serverAuth';
 import { validateEmail, validateString } from '@/lib/validate';
 import type { ValidationError } from '@/lib/validate';
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ user: { id: user.id, email: user.email } });
     res.cookies.set('token', token, {
       httpOnly: true,
-      secure: req.headers.get('x-forwarded-proto') === 'https' || req.nextUrl.protocol === 'https:',
+      secure: shouldUseSecureCookie(req),
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60,
