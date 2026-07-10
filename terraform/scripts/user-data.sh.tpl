@@ -5,7 +5,7 @@ exec > >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting user-data bootstrap..."
 
-# 2GB swapfile — prevent OOM during npm install/build on t3.micro
+# 2GB swapfile — prevent OOM on t3.micro
 fallocate -l 2G /swapfile
 chmod 600 /swapfile
 mkswap /swapfile
@@ -14,20 +14,15 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
 echo "[$(date)] Swapfile configured"
 
-# Install Node.js 20 LTS from NodeSource (Amazon Linux 2023 compatible)
+# Install Node.js 20 LTS (AL2023 uses dnf, not yum)
 curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-yum install -y nodejs git
-
-# Install Chromium for Puppeteer screenshots
-amazon-linux-extras install -y epel > /dev/null 2>&1 || true
-yum install -y chromium amazon-linux-extras 2>/dev/null || yum install -y google-chrome-stable 2>/dev/null || echo "[WARN] Chromium not available via yum, Puppeteer may use bundled version"
-
-# Set Puppeteer environment variable to find system Chromium
-echo 'export PUPPETEER_CHROMIUM_REVISION=1' >> /etc/profile.d/puppeteer.sh
-echo 'export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true' >> /etc/profile.d/puppeteer.sh
-source /etc/profile.d/puppeteer.sh
+dnf install -y nodejs git
 
 echo "[$(date)] Node.js $(node -v) installed"
+
+# Chromium for Puppeteer (AL2023)
+dnf install -y chromium 2>/dev/null || echo "[WARN] Chromium unavailable, Puppeteer will use bundled"
+echo 'export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true' >> /etc/profile.d/puppeteer.sh
 
 npm install -g pm2
 
@@ -54,19 +49,16 @@ S3_BUCKET_NAME=${s3_bucket}
 AWS_REGION=${aws_region}
 EOF
 
-echo "[$(date)] Environment file created"
+echo "[$(date)] Env file created"
 
-# Start with the standalone Next.js server
 cp -r .next/static .next/standalone/.next/
 cp -r public .next/standalone/ 2>/dev/null || true
 cp .env.production .next/standalone/
 
-# Load env vars into the process so the standalone server can use them
 set -a; source .env.production; set +a
 
 pm2 start .next/standalone/server.js --name "competitor-tracker" --update-env
-pm2 startup
+pm2 startup systemd -u root --hp /root
 pm2 save
 
-echo "[$(date)] PM2 started"
-echo "[$(date)] Bootstrap complete"
+echo "[$(date)] Bootstrap complete — app running on port 3000"

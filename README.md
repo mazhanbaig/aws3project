@@ -5,25 +5,25 @@ A SaaS tool that monitors competitor websites for pricing and feature changes. L
 ## Architecture
 
 ```
-┌─────────────┐     HTTP:80      ┌──────────────┐     Port 3000    ┌─────────┐
-│  End User   │ ────────────────→ │  ALB (pub)   │ ──────────────→ │  EC2    │
-│  (Browser)  │ ←─────────────── │              │                 │ (pub)   │
-└─────────────┘                  └──────────────┘                 └────┬────┘
-                                                                       │
-                                                          ┌────────────┴────────────┐
-                                                          │                         │
-                                                   ┌──────┴──────┐         ┌───────┴──────┐
-                                                   │  RDS        │         │  S3          │
-                                                   │  (private)   │         │  (snapshots) │
-                                                   │  PostgreSQL  │         │              │
-                                                   └─────────────┘         └──────────────┘
+┌─────────────┐     Port 3000     ┌─────────┐
+│  End User   │ ────────────────→ │  EC2    │
+│  (Browser)  │ ←─────────────── │ (pub)   │
+└─────────────┘                   └────┬────┘
+                                       │
+                          ┌────────────┴────────────┐
+                          │                         │
+                   ┌──────┴──────┐         ┌───────┴──────┐
+                   │  RDS        │         │  S3          │
+                   │  (private)   │         │  (snapshots) │
+                   │  PostgreSQL  │         │              │
+                   └─────────────┘         └──────────────┘
 ```
 
-- **EC2** (t3.micro, public subnet) — Runs Next.js app on port 3000, includes scheduler for periodic checks
+- **EC2** (t3.micro, public subnet) — Runs Next.js app on port 3000, Elastic IP for stable URL
 - **RDS** (db.t3.micro, private subnet) — PostgreSQL 15, no public access
 - **S3** — Stores HTML snapshots with versioning enabled
-- **ALB** — HTTP listener on port 80, health checks against `/api/health`
-- **No NAT Gateway** — EC2 is in public subnets, RDS needs no outbound internet
+- **Elastic IP** — Free static IP attached to the EC2 instance
+- **No ALB, No NAT Gateway** — 100% Free Tier eligible
 
 ## Stack
 
@@ -121,14 +121,17 @@ terraform plan
 terraform apply
 ```
 
-This provisions: VPC, subnets, ALB, EC2 (t3.micro), RDS (db.t3.micro), S3 bucket, IAM roles, CloudWatch.
+This provisions: VPC, subnets, EC2 (t3.micro), RDS (db.t3.micro), S3 bucket, IAM roles, CloudWatch, Elastic IP.
 
 The EC2 instance auto-installs Node.js 20, clones the app repo, installs deps, builds, and starts the Next.js server via PM2.
 
 ### Step 3: Verify
 
 ```bash
-curl http://$(terraform output -raw alb_dns_name)/api/health
+terraform output app_url
+# → http://1.2.3.4:3000
+
+curl http://$(terraform output -raw app_ip):3000/api/health
 # → {"status":"ok"}
 ```
 
@@ -138,19 +141,18 @@ curl http://$(terraform output -raw alb_dns_name)/api/health
 terraform destroy
 ```
 
-**⚠️ The ALB bills hourly (~$16-22/month) even when idle. Destroy when not testing.**
+**✅ 100% Free Tier eligible — no ALB costs.**
 
 ## CI/CD
 
 On push to `main`:
-1. Build & typecheck the app
-2. Start an ASG instance refresh (rolling replacement)
+1. Build, typecheck, lint & test the app
 
-Set these GitHub Secrets:
+Set this GitHub Secret:
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 
-The ASG name is populated via `terraform output -raw asg_name` — fill it as a GitHub variable after first `terraform apply`.
+Note: Automated redeploy on push is not configured (requires redeploying the EC2 instance).
 
 ## API Endpoints
 
@@ -182,7 +184,7 @@ The tool tracks changes and shows them in the UI. Alerts are a natural v2 additi
 Each user sees only their own data. Team features are out of scope.
 
 ### No custom domain, no HTTPS
-The ALB listens on HTTP :80 only. No Route53, no ACM. Suitable for personal/development use only.
+The app runs on HTTP port 3000 with an Elastic IP. No Route53, no ACM. Suitable for personal/development use only.
 
 ### Local Terraform state
 No S3 backend — single-operator project. Swap to remote state before adding collaborators.
@@ -191,10 +193,10 @@ No S3 backend — single-operator project. Swap to remote state before adding co
 
 | Service | Config | Est. Cost |
 |---------|--------|-----------|
-| ALB | 1 ALB, no data processed | ~$16-22 |
-| EC2 | t3.micro, single instance | ~$8-10 |
-| RDS | db.t3.micro, 20GB gp3 | ~$15-18 |
-| S3 | Negligible storage | ~$0 |
-| **Total** | | **~$39-50/month** |
+| EC2 | t3.micro (Free Tier: 750h/month) | **$0** ✅ |
+| RDS | db.t3.micro (Free Tier: 750h/month) | **$0** ✅ |
+| EIP | Elastic IP attached to running instance | **$0** ✅ |
+| S3 | Negligible storage | **$0** ✅ |
+| **Total** | | **$0/month** 🎉 |
 
-**Tip:** Run `terraform destroy` when not actively testing. The ALB is the biggest cost driver.
+**100% Free Tier eligible** as long as your AWS account is within the first 12 months.

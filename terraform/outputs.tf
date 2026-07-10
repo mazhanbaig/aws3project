@@ -1,11 +1,11 @@
-output "alb_dns_name" {
-  description = "The DNS name of the ALB"
-  value       = aws_lb.app.dns_name
+output "app_url" {
+  description = "The URL to access the app (HTTP on port 3000)"
+  value       = "http://${aws_eip.app.public_ip}:3000"
 }
 
-output "alb_zone_id" {
-  description = "The zone ID of the ALB"
-  value       = aws_lb.app.zone_id
+output "app_ip" {
+  description = "The public IP of the EC2 instance"
+  value       = aws_eip.app.public_ip
 }
 
 output "rds_endpoint" {
@@ -18,7 +18,7 @@ output "s3_bucket_name" {
   value       = aws_s3_bucket.snapshots.bucket
 }
 
-output "asg_name" {
-  description = "The name of the Auto Scaling Group"
-  value       = aws_autoscaling_group.app.name
+output "instance_id" {
+  description = "The ID of the EC2 instance"
+  value       = aws_instance.app.id
 }

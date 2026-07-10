@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
 
 const publicPaths = ['/api/auth/login', '/api/auth/signup', '/api/health', '/login', '/signup'];
+
+/**
+ * Lightweight Edge-compatible auth check.
+ * Only checks if a token cookie exists — actual verification happens
+ * in API routes, avoiding jsonwebtoken (not Edge-compatible).
+ */
+function hasTokenCookie(req: NextRequest): boolean {
+  return !!req.cookies.get('token')?.value;
+}
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -12,19 +20,18 @@ export function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith('/api/')) {
-    const user = getUserFromRequest(req);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!hasTokenCookie(req)) {
+      // Also check Authorization header for non-browser clients
+      const auth = req.headers.get('authorization');
+      if (!auth?.startsWith('Bearer ')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
-    const res = NextResponse.next();
-    return res;
+    return NextResponse.next();
   }
 
-  if (pathname.startsWith('/dashboard')) {
-    const user = getUserFromRequest(req);
-    if (!user) {
-      return NextResponse.redirect(new URL('/login', req.url));
-    }
+  if (pathname.startsWith('/dashboard') && !hasTokenCookie(req)) {
+    return NextResponse.redirect(new URL('/login', req.url));
   }
 
   return NextResponse.next();

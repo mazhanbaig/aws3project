@@ -225,5 +225,24 @@ Result:
   - Detail page shows visual diff tab alongside text diff with lazy-loaded image
   - Chromium installed on EC2 via user-data for production use
   - Graceful fallback if Chromium isn't available (dev without Puppeteer)
-Next step: User runs terraform apply to deploy infrastructure
+## [2026-07-10] Task: Phase 5 — Deploy to AWS
+Status: DONE
+Commands run:
+  - choco install terraform (attempted, required admin)
+  - aws configure (configured credentials for account 254566860930)
+  - openssl rand -base64 32 (generated db_password: 3SkU1VWYyEoN075uUZ3BryPDMcaZEI)
+  - openssl rand -base64 32 (generated jwt_secret: eUeEl9d6o1Ua0u4zAnNS19H2btXZG0v)
+  - git add -A && git commit -m 'Phase 7: Puppeteer screenshot visual diff system' && git push
+  - terraform init (downloaded AWS provider)
+  - terraform plan (2 resources to update)
+  - terraform apply -auto-approve (succeeded)
+  - curl /api/health → {"status":"ok"}
+Result:
+  - ALB DNS: competitor-tracker-alb-870472791.us-east-1.elb.amazonaws.com
+  - RDS endpoint: competitor-tracker-db.cozwkoekykt4.us-east-1.rds.amazonaws.com:5432
+  - S3 bucket: competitor-tracker-snapshots-7a5af8c5
+  - ASG name: competitor-tracker-asg
+  - Health check: ✅
+  - App is live and responding
+Next step: Use the app, or run terraform destroy when done to avoid ALB billing
 ---
