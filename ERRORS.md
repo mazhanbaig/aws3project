@@ -45,75 +45,85 @@ jsonwebtoken uses process.nextTick which is not supported in Edge Runtime
 source: .env.production: file not found
 ```
 **Why:** The `.env.production` file lives at `/app/app/.env.production` but the SSM command runs from a different working directory (`/var/lib/amazon/ssm/.../`)
-**Fix:** `cd /app/app` before running commands, or use absolute paths.
+**Fix Applied:**
+- Created `.env.production` on EC2 at `/app/app/` and `/app/app/.next/standalone/` via SSM
+- Fixed `user-data.sh.tpl` to create `.env.production` BEFORE `npm run build` so env file exists even if build fails
+- SSM deploy now passes env vars directly to `pm2 start` command
 
-**Status:** ❌ Not fixed — deploy command needs to specify `workingDirectory: ["/app/app"]`
+**Status:** ✅ Fixed
 
 ---
 
-## ❌ Error 4: Database Connection Refused (`ECONNREFUSED`)
+## ❌ Error 4: Signup 500 — RDS SSL Required + Missing Env Vars
 
-**When:** POST `/api/auth/signup` returns HTTP 500
-**Error:**
+**Root cause (two layers):**
+
+**Layer 1:** `.env.production` was never created because user-data script failed during `npm run build` before reaching the `cat > .env.production` step. PM2 had no DB_HOST → fell back to localhost.
+
+**Layer 2:** Even with correct DB_HOST, RDS requires SSL encryption:
 ```
-ECONNREFUSED 127.0.0.1:5432
+no pg_hba.conf entry for host "10.0.1.20", user "app", database "competitor_tracker", no encryption
 ```
-**Why:**
-- The app is trying to connect to Postgres on **localhost** (`127.0.0.1:5432`)
-- The RDS database is at `competitor-tracker-db.cozwkoekykt4.us-east-1.rds.amazonaws.com:5432`
-- The `.env.production` file contains the correct RDS endpoint, but the **environment variables aren't being passed to PM2** when the server starts
-- `db.ts` falls back to `'localhost'` when `DB_HOST` env var is not set:
+
+**Fixes Applied:**
+- `app/src/lib/db.ts` — Added conditional SSL config:
   ```ts
-  host: process.env.DB_HOST || 'localhost',
+  ssl: process.env.DB_HOST && process.env.DB_HOST !== 'localhost'
+    ? { rejectUnauthorized: false }
+    : false,
   ```
+- `app/src/app/api/auth/signup/route.ts` — Added outer try/catch returning proper JSON on error
+- `app/src/app/api/auth/login/route.ts` — Same try/catch pattern
+- Created `.env.production` on EC2 with correct values
+- PM2 restarted with env vars passed directly
 
-**Fix:** Make sure the DB env vars reach the running app. Options:
-  1. Pass them directly to PM2: `pm2 start server.js --env DB_HOST=...`
-  2. Create a `.env` file in the standalone directory that `db.ts` reads
-  3. Fix the user-data script to properly export env vars before `pm2 start`
-
-**Root cause confirmed via PM2 logs:**
+**Verification:**
 ```
-Error: connect ECONNREFUSED 127.0.0.1:5432
-    at /app/app/.next/standalone/node_modules/pg-pool/index.js:45:11
-    at async i (/app/app/.next/standalone/.next/server/app/api/auth/signup/route.js:1:2850)
+POST /api/auth/signup → HTTP 201 {"user":{"id":1,"email":"finaltest@example.com"}} ✅
+POST /api/auth/login  → HTTP 200 {"user":{"id":1,"email":"finaltest@example.com"}} ✅
+POST /api/auth/signup (duplicate) → HTTP 409 {"error":"Email already registered"} ✅
 ```
 
-**What was found:**
-- `.env.production` does NOT exist at `/app/app/` or `/app/app/.next/standalone/`
-- PM2 process has NO `DB_HOST`, `DB_USER`, `DB_PASSWORD`, or `JWT_SECRET` env vars
-- The user-data script fails during `npm run build` (pngjs types) BEFORE reaching the `cat > .env.production` step, so the env file is never created
-- Health endpoint `/api/health` works because it doesn't touch the DB
-
-**Fix:**
-1. Create `.env.production` on EC2 via SSM with correct values
-2. Restart PM2 with env vars loaded
-3. Fix user-data script: move env file creation BEFORE the build
-
-**Status:** ❌ Not fixed — about to fix now
+**Status:** ✅ Fixed
 
 ---
 
-## ✅ Build Status (Local)
+## ⚠️ Remaining: Fix 1 — Security Group (No ALB, needs your decision)
 
-After applying fixes for errors 1 & 2, local build passes:
+The debug plan says to restrict port 3000 to ALB only. But the ALB was already removed during the Free Tier migration. The EC2 connects directly via Elastic IP (no load balancer).
 
-```
-✓ Compiled successfully
-✓ Linting and checking completed successfully
-✓ Generating static pages (10/10)
-✓ Collecting build traces...
-✓ Finalizing page optimization...
-```
+**Options:**
+1. **Keep direct access** — Port 3000 open to `0.0.0.0/0` (current, simplest for free tier)
+2. **Nginx reverse proxy** — Add nginx on EC2 listening on port 80 → proxy to 3000, then close port 3000
+3. **Restore ALB** — Re-add the ALB (costs ~$18/month)
+
+**Status:** ⏳ Needs user decision
+
+---
+
+## ✅ Build & Test Status
+
+| Check | Result |
+|-------|--------|
+| Local build (`npm run build`) | ✅ Passes |
+| Local tests (11) | ✅ All pass |
+| Health check | ✅ `{"status":"ok"}` |
+| Signup | ✅ HTTP 201 with user data |
+| Login | ✅ HTTP 200 with user data |
+| Duplicate signup | ✅ HTTP 409 conflict |
+| DB users table | ✅ Verified via signup (psql not installed on EC2) |
+| bcrypt native binary | ✅ Working (signup succeeded, no ELF errors) |
+| Edge Runtime middleware | ✅ Fixed (Edge-compatible) |
+| pngjs type declarations | ✅ Fixed |
 
 ---
 
 ## 📍 App URL
-http://3.212.52.132:3000 (app is running! But signup/login return 500 due to Error 4)
+http://3.212.52.132:3000 (fully functional!)
 
 ## 🌩️ EC2 Instance
 - **ID:** `i-032293f81e7ad13c3`
 - **Status:** running
-- **Last boot:** 2026-07-10T09:45:21 UTC
-- **Security group:** `competitor-tracker-ec2-sg-v2` (port 3000 open to all)
+- **Latest commit:** `932b660` (Fix signup 500: RDS SSL config, try/catch on API routes)
+- **Security group:** `competitor-tracker-ec2-sg-v2` (port 3000 open to all — needs decision)
 - **Database:** `competitor-tracker-db.cozwkoekykt4.us-east-1.rds.amazonaws.com:5432`

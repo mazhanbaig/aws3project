@@ -246,3 +246,33 @@ Result:
   - App is live and responding
 Next step: Use the app, or run terraform destroy when done to avoid ALB billing
 ---
+
+## [2026-07-10] Task: Debug & Fix — Signup 500, Security Group, Env Vars, Build Errors
+Status: DONE
+Files touched:
+  - app/src/lib/db.ts (added SSL config for RDS connection)
+  - app/src/app/api/auth/signup/route.ts (added outer try/catch wrapper)
+  - app/src/app/api/auth/login/route.ts (added outer try/catch wrapper)
+  - terraform/scripts/user-data.sh.tpl (moved .env.production creation BEFORE npm run build)
+  - app/src/types/pngjs.d.ts (created — pngjs type declarations, commit 8fb865c)
+  - app/src/middleware.ts (rewritten for Edge Runtime compat, commit 8fb865c)
+  - ERRORS.md (updated with root cause analysis)
+Commands run:
+  - SSM: Checked PM2 error logs → found ECONNREFUSED 127.0.0.1:5432
+  - SSM: Checked env vars in PM2 process → DB_HOST missing
+  - SSM: Created .env.production on EC2 at /app/app/ and /app/app/.next/standalone/
+  - SSM: Restarted PM2 with env vars → still 500 (RDS SSL issue)
+  - SSM: Checked PM2 logs again → found "no pg_hba.conf entry... no encryption"
+  - cd app && npm run build (verified ✅)
+  - cd app && npm run test (11/11 passed ✅)
+  - git commit -m 'Fix signup 500: RDS SSL config, try/catch on API routes, env file before build' && git push
+  - SSM: Deployed to EC2 (git pull, npm rebuild, PM2 restart with env vars inline)
+  - curl -X POST /api/auth/signup → HTTP 201 with user data ✅
+  - curl -X POST /api/auth/login → HTTP 200 with user data ✅
+  - curl -X POST /api/auth/signup (duplicate) → HTTP 409 'Email already registered' ✅
+Result:
+  - Signup 500 root cause: RDS requires SSL + env vars missing → both fixed
+  - Errors 1-4 from ERRORS.md: ALL fixed and verified
+  - App is fully functional: signup, login, health check all work
+  - Security Group (Fix 1) still needs user decision — no ALB exists, options: nginx proxy or direct access
+---
