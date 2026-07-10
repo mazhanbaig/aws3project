@@ -33,4 +33,15 @@
 - [ ] All 10 checks
 
 ## Phase 7 — Stretch (optional)
-- [ ] Puppeteer screenshots
+- [x] Puppeteer screenshot service (app/src/lib/screenshot.ts)
+- [x] Visual diff engine with pixelmatch + pngjs (app/src/lib/visual-diff.ts)
+- [x] Visual diff API route (/api/tracked-pages/[id]/visual-diff)
+- [x] Screenshot retrieval API route (/api/screenshot/[...key])
+- [x] Visual diff UI component with image viewer
+- [x] Detail page visual diff tab (text/visual toggle)
+- [x] Screenshot toggle in add-page form (dashboard)
+- [x] Scheduler/check-now screenshot capture integration
+- [x] DB schema: screenshot_enabled, screenshot_s3_key columns
+- [x] user-data.sh.tpl: Chromium installation for Puppeteer
+- [x] next.config.js: external packages for puppeteer/pngjs/pixelmatch
+- [x] Build verified, tests pass

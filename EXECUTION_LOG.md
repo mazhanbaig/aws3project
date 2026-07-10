@@ -194,5 +194,36 @@ Result:
   - Phase 5: instructions in README (user needs AWS creds)
   - Phase 6: locally verified (app renders, health API works, tests pass)
   - Phase 7: not started
+## [2026-07-10] Task: Phase 7 — Puppeteer Screenshot Visual Diff
+Status: DONE
+Files touched:
+  - app/src/lib/screenshot.ts (created — Puppeteer browser service with singleton, graceful fallback)
+  - app/src/lib/visual-diff.ts (created — pixelmatch + pngjs diff engine, comparison image generator)
+  - app/src/lib/s3.ts (updated — binary screenshot upload/download, Buffer support)
+  - app/src/lib/scheduler.ts (updated — screenshot capture during sweeps, visual diff percent tracking)
+  - app/src/lib/db.ts (updated — screenshot_enabled on tracked_pages, screenshot_s3_key on snapshots, ALTER TABLE for migration)
+  - app/src/components/visual-diff-view.tsx (created — React component with lazy-loaded image viewer)
+  - app/src/app/api/screenshot/[...key]/route.ts (created — serve screenshot PNGs from S3)
+  - app/src/app/api/tracked-pages/[id]/visual-diff/route.ts (created — compute & return visual diff PNG)
+  - app/src/app/api/tracked-pages/route.ts (updated — accept screenshotEnabled in POST)
+  - app/src/app/api/tracked-pages/[id]/changes/route.ts (updated — include screenshot_s3_key fields)
+  - app/src/app/api/tracked-pages/[id]/check-now/route.ts (updated — capture screenshot if enabled)
+  - app/src/app/dashboard/page.tsx (updated — screenshot toggle checkbox in add form)
+  - app/src/app/dashboard/[id]/page.tsx (updated — visual diff tab with text/visual toggle)
+  - app/next.config.js (updated — puppeteer, pngjs, pixelmatch in external packages)
+  - terraform/scripts/user-data.sh.tpl (updated — Chromium installation for Puppeteer)
+Commands run:
+  - cd app && npm install puppeteer pixelmatch (dependencies)
+  - cd app && npm install -D @types/pixelmatch @types/pngjs (type definitions)
+  - cd app && npm install pngjs (PNG encoding/decoding)
+  - cd app && npm run build (verified — clean build after Buffer/Blob type fixes)
+  - cd app && npm run test (11/11 tests pass)
+Result:
+  - Users can toggle screenshots per tracked page via dashboard
+  - On each check, Puppeteer captures a full-page screenshot, stored in S3
+  - Visual diff computed using pixelmatch (pixel-level comparison)
+  - Detail page shows visual diff tab alongside text diff with lazy-loaded image
+  - Chromium installed on EC2 via user-data for production use
+  - Graceful fallback if Chromium isn't available (dev without Puppeteer)
 Next step: User runs terraform apply to deploy infrastructure
 ---

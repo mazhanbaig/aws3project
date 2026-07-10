@@ -15,7 +15,7 @@ function ensureBucketConfigured(): void {
 export async function uploadSnapshot(
   trackedPageId: number,
   timestamp: string,
-  content: string,
+  content: string | Buffer,
   isScreenshot = false
 ): Promise<string> {
   ensureBucketConfigured();
@@ -48,4 +48,17 @@ export async function downloadSnapshot(key: string): Promise<string> {
     })
   );
   return await res.Body!.transformToString();
+}
+
+export async function downloadScreenshotBuffer(key: string): Promise<Buffer> {
+  ensureBucketConfigured();
+
+  const res = await s3.send(
+    new GetObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+    })
+  );
+  const bytes = await res.Body!.transformToByteArray();
+  return Buffer.from(bytes);
 }

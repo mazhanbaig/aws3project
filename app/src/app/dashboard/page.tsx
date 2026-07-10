@@ -10,6 +10,7 @@ interface TrackedPage {
   label: string;
   url: string;
   check_interval_hours: number;
+  screenshot_enabled: boolean;
   last_checked_at: string | null;
   created_at: string;
   changes_count: string;
@@ -41,6 +42,7 @@ function DashboardContent() {
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
   const [interval, setInterval] = useState(24);
+  const [screenshotEnabled, setScreenshotEnabled] = useState(false);
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
   const [checkingIds, setCheckingIds] = useState<Set<number>>(new Set());
@@ -68,7 +70,12 @@ function DashboardContent() {
     const res = await fetch('/api/tracked-pages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label, url, checkIntervalHours: interval }),
+      body: JSON.stringify({
+        label,
+        url,
+        checkIntervalHours: interval,
+        screenshotEnabled,
+      }),
     });
 
     setAdding(false);
@@ -83,6 +90,7 @@ function DashboardContent() {
     setLabel('');
     setUrl('');
     setInterval(24);
+    setScreenshotEnabled(false);
     loadPages();
   }
 
@@ -149,13 +157,28 @@ function DashboardContent() {
                 <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} required placeholder="https://example.com/pricing" className="input-field" />
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <div className="w-32">
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Check every</label>
                 <div className="flex items-center gap-2">
                   <input type="number" value={interval} onChange={(e) => setInterval(parseInt(e.target.value) || 24)} min={1} max={168} className="input-field w-20 text-center" />
                   <span className="text-sm text-muted">hours</span>
                 </div>
+              </div>
+              <div className="flex items-center gap-2 pt-6">
+                <input
+                  type="checkbox"
+                  id="screenshot-toggle"
+                  checked={screenshotEnabled}
+                  onChange={(e) => setScreenshotEnabled(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-accent-600 focus:ring-accent-500/20 transition-colors"
+                />
+                <label htmlFor="screenshot-toggle" className="text-sm text-gray-700 select-none cursor-pointer flex items-center gap-1.5">
+                  <svg className="w-4 h-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.828 12h8.484M9.828 12l-1.414-1.414M9.828 12l1.414 1.414M12 4v16" />
+                  </svg>
+                  Enable screenshots
+                </label>
               </div>
             </div>
             {error && <div className="bg-red-50 text-red-700 text-sm rounded-lg px-4 py-2.5 border border-red-100">{error}</div>}
@@ -207,6 +230,14 @@ function DashboardContent() {
                               <Link href={`/dashboard/${page.id}`} className="font-medium text-gray-900 hover:text-accent-600 transition-colors">{page.label}</Link>
                               {parseInt(page.changes_count) > 0 && <span className="badge-accent">{page.changes_count} change{page.changes_count !== '1' ? 's' : ''}</span>}
                               {!page.last_checked_at && <span className="badge-warning">Pending</span>}
+                              {page.screenshot_enabled && (
+                                <span className="inline-flex items-center gap-1 text-xs text-accent-600">
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.828 12h8.484M9.828 12l-1.414-1.414M9.828 12l1.414 1.414M12 4v16" />
+                                  </svg>
+                                  SS
+                                </span>
+                              )}
                             </div>
                             <p className="text-sm text-muted truncate mt-0.5 max-w-lg">{page.url}</p>
                             <p className="text-xs text-muted mt-1">

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { label, url, checkIntervalHours } = body;
+  const { label, url, checkIntervalHours, screenshotEnabled } = body;
 
   const errors: ValidationError[] = [
     validateString(label, 'label', 200),
@@ -48,10 +48,10 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await query(
-    `INSERT INTO tracked_pages (user_id, label, url, check_interval_hours)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO tracked_pages (user_id, label, url, check_interval_hours, screenshot_enabled)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
-    [user.userId, label!.trim(), url!.trim(), Math.min(checkIntervalHours || 24, 168)]
+    [user.userId, label!.trim(), url!.trim(), Math.min(checkIntervalHours || 24, 168), !!screenshotEnabled]
   );
 
   return NextResponse.json({ page: result.rows[0] }, { status: 201 });

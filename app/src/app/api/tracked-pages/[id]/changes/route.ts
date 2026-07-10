@@ -19,7 +19,9 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const changes = await query(
     `SELECT c.*, 
       old_snap.s3_key as old_s3_key, old_snap.fetched_at as old_fetched_at,
-      new_snap.s3_key as new_s3_key, new_snap.fetched_at as new_fetched_at
+      new_snap.s3_key as new_s3_key, new_snap.fetched_at as new_fetched_at,
+      old_snap.screenshot_s3_key as old_screenshot_s3_key,
+      new_snap.screenshot_s3_key as new_screenshot_s3_key
      FROM changes c
      LEFT JOIN snapshots old_snap ON c.old_snapshot_id = old_snap.id
      JOIN snapshots new_snap ON c.new_snapshot_id = new_snap.id

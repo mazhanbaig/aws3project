@@ -18,6 +18,15 @@ echo "[$(date)] Swapfile configured"
 curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
 yum install -y nodejs git
 
+# Install Chromium for Puppeteer screenshots
+amazon-linux-extras install -y epel > /dev/null 2>&1 || true
+yum install -y chromium amazon-linux-extras 2>/dev/null || yum install -y google-chrome-stable 2>/dev/null || echo "[WARN] Chromium not available via yum, Puppeteer may use bundled version"
+
+# Set Puppeteer environment variable to find system Chromium
+echo 'export PUPPETEER_CHROMIUM_REVISION=1' >> /etc/profile.d/puppeteer.sh
+echo 'export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true' >> /etc/profile.d/puppeteer.sh
+source /etc/profile.d/puppeteer.sh
+
 echo "[$(date)] Node.js $(node -v) installed"
 
 npm install -g pm2

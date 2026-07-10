@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { VisualDiffView } from '@/components/visual-diff-view';
 
 interface Change {
   id: number;
@@ -17,6 +18,9 @@ interface Change {
   new_s3_key: string;
   old_fetched_at: string | null;
   new_fetched_at: string;
+  visual_diff_percent: number | null;
+  old_screenshot_s3_key: string | null;
+  new_screenshot_s3_key: string | null;
 }
 
 interface PageInfo {
@@ -24,6 +28,7 @@ interface PageInfo {
   label: string;
   url: string;
   check_interval_hours: number;
+  screenshot_enabled: boolean;
   last_checked_at: string | null;
   created_at: string;
 }
@@ -157,7 +162,7 @@ function PageDetailContent() {
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-semibold tracking-tight">{page.label}</h1>
               <p className="text-sm text-muted mt-0.5 break-all">{page.url}</p>
-              <div className="flex items-center gap-4 mt-3">
+              <div className="flex items-center gap-4 mt-3 flex-wrap">
                 <div className="flex items-center gap-1.5 text-xs text-muted">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -176,6 +181,14 @@ function PageDetailContent() {
                   </svg>
                   {changes.length} change{changes.length !== 1 ? 's' : ''}
                 </div>
+                {page.screenshot_enabled && (
+                  <span className="inline-flex items-center gap-1 text-xs text-accent-600 bg-accent-50 px-2 py-0.5 rounded-full">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.828 12h8.484M9.828 12l-1.414-1.414M9.828 12l1.414 1.414M12 4v16" />
+                    </svg>
+                    Screenshots on
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -219,6 +232,7 @@ function ChangeCard({ change, pageId, index }: { change: Change; pageId: string;
   const [expanded, setExpanded] = useState(false);
   const [diffLines, setDiffLines] = useState<{ type: string; text: string }[] | null>(null);
   const [loadingDiff, setLoadingDiff] = useState(false);
+  const [showVisual, setShowVisual] = useState(false);
 
   async function loadDiff() {
     if (diffLines || loadingDiff) return;
@@ -244,12 +258,14 @@ function ChangeCard({ change, pageId, index }: { change: Change; pageId: string;
   function handleToggle() {
     if (!expanded) loadDiff();
     setExpanded(!expanded);
+    if (!expanded) setShowVisual(false);
   }
 
   const date = new Date(change.detected_at);
   const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const hasChanges = change.added_lines_count > 0 || change.removed_lines_count > 0;
+  const hasScreenshots = !!change.new_screenshot_s3_key || !!change.old_screenshot_s3_key;
 
   return (
     <div className="card overflow-hidden animate-fade-in" style={{ animationDelay: `${index * 80}ms` }}>
@@ -264,7 +280,7 @@ function ChangeCard({ change, pageId, index }: { change: Change; pageId: string;
           </div>
           <div className="w-px h-8 bg-border shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               {hasChanges ? (
                 <>
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
@@ -280,6 +296,11 @@ function ChangeCard({ change, pageId, index }: { change: Change; pageId: string;
                 <span className="text-xs font-medium text-muted bg-soft px-2 py-0.5 rounded-full">Initial snapshot</span>
               )}
               <span className="text-sm text-muted truncate">{change.diff_summary}</span>
+              {change.visual_diff_percent !== null && change.visual_diff_percent > 0 && (
+                <span className="text-xs text-accent-600 bg-accent-50 px-2 py-0.5 rounded-full font-medium">
+                  {change.visual_diff_percent}% visual change
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -290,35 +311,70 @@ function ChangeCard({ change, pageId, index }: { change: Change; pageId: string;
 
       {expanded && (
         <div className="border-t border-border animate-fade-in">
-          {loadingDiff ? (
-            <div className="p-6 flex items-center justify-center gap-2 text-sm text-muted">
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Loading diff...
-            </div>
-          ) : diffLines ? (
-            <div className="p-4 overflow-x-auto max-h-96 overflow-y-auto">
-              <pre className="text-xs leading-relaxed font-mono">
-                {diffLines.map((line, i) => (
-                  <div key={i} className={`px-3 py-0.5 -mx-3 whitespace-pre-wrap break-all ${
-                    line.type === 'added'
-                      ? 'bg-emerald-50/70 text-emerald-800 border-l-2 border-emerald-400'
-                      : line.type === 'removed'
-                      ? 'bg-amber-50/70 text-amber-800 border-l-2 border-amber-400'
-                      : 'text-gray-600 border-l-2 border-transparent'
-                  }`}>
-                    <span className="select-none mr-2 opacity-50">
-                      {line.type === 'added' ? '+' : line.type === 'removed' ? '−' : ' '}
-                    </span>
-                    {line.text}
-                  </div>
-                ))}
-              </pre>
+          {/* Tab switcher for text vs visual diff */}
+          <div className="flex items-center gap-0 border-b border-border bg-gray-50/50">
+            <button
+              className={`px-4 py-2 text-xs font-medium transition-colors border-b-2 ${
+                !showVisual ? 'border-accent-500 text-accent-600' : 'border-transparent text-muted hover:text-gray-700'
+              }`}
+              onClick={() => setShowVisual(false)}
+            >
+              Text diff
+            </button>
+            {hasScreenshots && (
+              <button
+                className={`px-4 py-2 text-xs font-medium transition-colors border-b-2 ${
+                  showVisual ? 'border-accent-500 text-accent-600' : 'border-transparent text-muted hover:text-gray-700'
+                }`}
+                onClick={() => setShowVisual(true)}
+              >
+                Visual diff
+              </button>
+            )}
+          </div>
+
+          {showVisual ? (
+            <div className="p-4">
+              <VisualDiffView
+                changeId={change.id}
+                pageId={pageId}
+                hasScreenshots={hasScreenshots}
+                diffPercent={change.visual_diff_percent}
+              />
             </div>
           ) : (
-            <div className="p-6 text-center text-sm text-muted">Could not load diff content.</div>
+            <>
+              {loadingDiff ? (
+                <div className="p-6 flex items-center justify-center gap-2 text-sm text-muted">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Loading diff...
+                </div>
+              ) : diffLines ? (
+                <div className="p-4 overflow-x-auto max-h-96 overflow-y-auto">
+                  <pre className="text-xs leading-relaxed font-mono">
+                    {diffLines.map((line, i) => (
+                      <div key={i} className={`px-3 py-0.5 -mx-3 whitespace-pre-wrap break-all ${
+                        line.type === 'added'
+                          ? 'bg-emerald-50/70 text-emerald-800 border-l-2 border-emerald-400'
+                          : line.type === 'removed'
+                          ? 'bg-amber-50/70 text-amber-800 border-l-2 border-amber-400'
+                          : 'text-gray-600 border-l-2 border-transparent'
+                      }`}>
+                        <span className="select-none mr-2 opacity-50">
+                          {line.type === 'added' ? '+' : line.type === 'removed' ? '−' : ' '}
+                        </span>
+                        {line.text}
+                      </div>
+                    ))}
+                  </pre>
+                </div>
+              ) : (
+                <div className="p-6 text-center text-sm text-muted">Could not load diff content.</div>
+              )}
+            </>
           )}
         </div>
       )}

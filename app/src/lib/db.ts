@@ -35,6 +35,7 @@ export async function initSchema(): Promise<void> {
       label VARCHAR(255) NOT NULL,
       url TEXT NOT NULL,
       check_interval_hours INTEGER DEFAULT 24,
+      screenshot_enabled BOOLEAN DEFAULT false,
       created_at TIMESTAMPTZ DEFAULT NOW(),
       last_checked_at TIMESTAMPTZ
     );
@@ -43,6 +44,7 @@ export async function initSchema(): Promise<void> {
       id SERIAL PRIMARY KEY,
       tracked_page_id INTEGER NOT NULL REFERENCES tracked_pages(id) ON DELETE CASCADE,
       s3_key TEXT NOT NULL,
+      screenshot_s3_key TEXT,
       text_hash VARCHAR(64) NOT NULL,
       fetched_at TIMESTAMPTZ DEFAULT NOW()
     );
@@ -58,4 +60,13 @@ export async function initSchema(): Promise<void> {
       detected_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+
+  // Add columns if they don't exist (safe for existing databases)
+  await query(`
+    ALTER TABLE tracked_pages ADD COLUMN IF NOT EXISTS screenshot_enabled BOOLEAN DEFAULT false;
+  `).catch(() => {});
+
+  await query(`
+    ALTER TABLE snapshots ADD COLUMN IF NOT EXISTS screenshot_s3_key TEXT;
+  `).catch(() => {});
 }
