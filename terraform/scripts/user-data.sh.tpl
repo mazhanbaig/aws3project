@@ -33,11 +33,7 @@ cd /app/app
 
 echo "[$(date)] App cloned"
 
-npm ci --prefer-offline
-npm run build
-
-echo "[$(date)] Build completed"
-
+# Write env file BEFORE build so it exists even if build fails
 cat > .env.production << EOF
 DB_HOST=${db_host}
 DB_PORT=${db_port}
@@ -50,6 +46,11 @@ AWS_REGION=${aws_region}
 EOF
 
 echo "[$(date)] Env file created"
+
+npm ci --prefer-offline
+npm run build
+
+echo "[$(date)] Build completed"
 
 cp -r .next/static .next/standalone/.next/
 cp -r public .next/standalone/ 2>/dev/null || true
