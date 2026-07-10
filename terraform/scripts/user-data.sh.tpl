@@ -27,7 +27,7 @@ echo "[$(date)] PM2 installed"
 git clone ${app_repo_url} /app
 cd /app/app
 
-echo "[$(date)] App cloned. Contents: $(ls -la)"
+echo "[$(date)] App cloned"
 
 npm ci --prefer-offline
 npm run build
@@ -51,6 +51,9 @@ echo "[$(date)] Environment file created"
 cp -r .next/static .next/standalone/.next/
 cp -r public .next/standalone/ 2>/dev/null || true
 cp .env.production .next/standalone/
+
+# Load env vars into the process so the standalone server can use them
+set -a; source .env.production; set +a
 
 pm2 start .next/standalone/server.js --name "competitor-tracker" --update-env
 pm2 startup

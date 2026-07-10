@@ -22,6 +22,7 @@ resource "aws_db_instance" "postgres" {
   publicly_accessible = false
   skip_final_snapshot = true
   deletion_protection = false
+  apply_immediately   = true
 
   enabled_cloudwatch_logs_exports = ["postgresql"]
 

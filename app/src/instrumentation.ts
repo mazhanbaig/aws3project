@@ -8,6 +8,14 @@ export async function register() {
   }
 
   try {
+    const { initSchema } = await import('@/lib/db');
+    await initSchema();
+    console.log('[Instrumentation] Database schema initialized');
+  } catch (err) {
+    console.error('[Instrumentation] Failed to initialize schema:', err);
+  }
+
+  try {
     const { startScheduler } = await import('@/lib/scheduler');
     startScheduler();
   } catch (err) {
