@@ -1,0 +1,9 @@
+aws_region = "us-east-1"
+
+db_password = "your-secure-postgres-password-here"
+
+jwt_secret = "your-jwt-secret-here-at-least-32-chars"
+
+my_ip = ""
+
+app_repo_url = "https://github.com/owner/competitor-tracker.git"

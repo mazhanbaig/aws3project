@@ -1,0 +1,15 @@
+*.tfstate
+*.tfstate.backup
+.terraform/
+crash.log
+
+terraform.tfvars
+
+.env.production
+
+.DS_Store
+.next/
+node_modules/
+terraform.exe
+next-env.d.ts
+*.tsbuildinfo
