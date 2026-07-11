@@ -2,12 +2,12 @@
 echo "[user-data] === Starting user-data bootstrap ==="
 
 # --- 2GB swapfile (prevents OOM on t3.micro) ---
-fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+dd if=/dev/zero of=/swapfile bs=1M count=2048 && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
 echo "[user-data] Swapfile configured"
 
 # --- Install Node.js + git ---
-dnf install -y nodejs git npm
+dnf install -y nodejs git
 echo "[user-data] Node.js $(node -v) installed"
 
 # --- Install PM2 ---
