@@ -53,7 +53,7 @@ resource "aws_lb_listener" "http" {
 # Security group for ALB
 resource "aws_security_group" "alb" {
   name        = "competitor-tracker-alb-sg"
-  description = "ALB security group - HTTP from anywhere"
+  description = "ALB security group - inbound HTTP from anywhere"
   vpc_id      = aws_vpc.main.id
 
   ingress {
