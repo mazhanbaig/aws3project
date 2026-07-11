@@ -1,202 +1,118 @@
 # Competitor Tracker
 
-A SaaS tool that monitors competitor websites for pricing and feature changes. Logged-in users add competitor URLs, the system periodically fetches those pages, diffs them against the last snapshot, and shows a timeline of what changed.
+> **A full-stack, cloud-native competitor monitoring platform** — Track pricing, features, and content changes across competitor websites with automated text and visual diffing.
 
-## Architecture
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![AWS](https://img.shields.io/badge/AWS-FF9900?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+[![Terraform](https://img.shields.io/badge/Terraform-7B42BC?logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 
-```
-┌─────────────┐     Port 3000     ┌─────────┐
-│  End User   │ ────────────────→ │  EC2    │
-│  (Browser)  │ ←─────────────── │ (pub)   │
-└─────────────┘                   └────┬────┘
-                                       │
-                          ┌────────────┴────────────┐
-                          │                         │
-                   ┌──────┴──────┐         ┌───────┴──────┐
-                   │  RDS        │         │  S3          │
-                   │  (private)   │         │  (snapshots) │
-                   │  PostgreSQL  │         │              │
-                   └─────────────┘         └──────────────┘
-```
+---
 
-- **EC2** (t3.micro, public subnet) — Runs Next.js app on port 3000, Elastic IP for stable URL
-- **RDS** (db.t3.micro, private subnet) — PostgreSQL 15, no public access
-- **S3** — Stores HTML snapshots with versioning enabled
-- **Elastic IP** — Free static IP attached to the EC2 instance
-- **No ALB, No NAT Gateway** — 100% Free Tier eligible
+## ✨ Features
 
-## Stack
+- **Automated Monitoring** — Track competitor web pages hourly, daily, or weekly
+- **Smart Diff Engine** — Unified text diff with added/removed line highlighting
+- **Visual Screenshots** — Full-page screenshots with pixel-level visual comparison
+- **Change History** — Complete timeline of all detected changes
+- **JWT Authentication** — Secure HttpOnly cookie-based auth
+- **Production Infrastructure** — ALB + ASG on AWS via Terraform
+
+## 🏗 Architecture
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14 (App Router), React 18, Tailwind CSS 3 |
-| Backend | Next.js API Routes, TypeScript |
-| Database | PostgreSQL 15 via `pg` (no ORM) |
-| Auth | JWT (httpOnly cookies), bcrypt |
-| Scraping | `fetch` + `cheerio` (no headless browser) |
-| Scheduler | `node-cron` (every 30 min sweep) |
-| Storage | AWS S3 (HTML snapshot archive) |
-| Infra | Terraform 1.6+, AWS |
+| **Frontend** | Next.js 14 (App Router), TypeScript, Tailwind CSS |
+| **Backend** | Next.js API Routes, node-postgres, JWT, bcrypt |
+| **Browser Automation** | Puppeteer, pixelmatch, pngjs |
+| **Database** | AWS RDS PostgreSQL |
+| **Storage** | AWS S3 (snapshots, screenshots) |
+| **Compute** | AWS EC2 (Auto Scaling Group) |
+| **Load Balancer** | AWS ALB |
+| **Infrastructure** | Terraform (HCL) |
+| **Process Manager** | PM2 |
 
-## Project Structure
+## 🚀 Quick Start
 
-```
-.
-├── app/                          # Next.js application
-│   ├── src/
-│   │   ├── app/                  # App Router pages & API routes
-│   │   │   ├── api/              # All backend endpoints
-│   │   │   ├── dashboard/        # Dashboard & detail views
-│   │   │   ├── login/            # Login page
-│   │   │   └── signup/           # Signup page
-│   │   ├── lib/                  # Core logic
-│   │   │   ├── auth.ts           # JWT + bcrypt helpers
-│   │   │   ├── db.ts             # PostgreSQL pool + schema
-│   │   │   ├── s3.ts             # S3 upload/download
-│   │   │   ├── scraper.ts        # Fetch + HTML parse + diff
-│   │   │   ├── scheduler.ts      # Cron-based page sweeper
-│   │   │   └── diff-view.tsx     # Diff utility
-│   │   ├── instrumentation.ts    # Server startup hook
-│   │   └── middleware.ts         # Auth middleware
-│   ├── package.json
-│   └── next.config.js
-├── terraform/                    # All infrastructure as code
-│   ├── versions.tf              # Provider config
-│   ├── variables.tf             # All variables
-│   ├── vpc.tf                   # VPC, subnets, routing
-│   ├── security-groups.tf       # ALB, EC2, RDS SGs
-│   ├── alb.tf                   # Load balancer
-│   ├── asg.tf                   # Auto Scaling Group + launch template
-│   ├── rds.tf                   # PostgreSQL instance
-│   ├── s3.tf                    # Snapshots bucket
-│   ├── iam.tf                   # EC2 IAM role + policies
-│   ├── cloudwatch.tf            # Logs + CPU alarm
-│   ├── outputs.tf               # Outputs
-│   └── scripts/user-data.sh.tpl  # EC2 bootstrap script
-├── .github/workflows/deploy.yml # CI/CD pipeline
-└── README.md
+```bash
+# Clone the repository
+git clone https://github.com/mazhanbaig/aws3project.git
+cd aws3project/app
+
+# Install dependencies
+npm ci
+
+# Set up environment
+cp .env.local.example .env.local
+# Edit .env.local with your database credentials
+
+# Run development server
+npm run dev
 ```
 
-## Deployment
-
-### Prerequisites
-
-1. **AWS Account** with programmatic access
-2. **Terraform 1.6+** installed locally
-3. **AWS CLI** configured (`aws configure`)
-
-### Step 1: Configure variables
+## ☁️ Deploy to AWS
 
 ```bash
 cd terraform
 cp terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars` with your values:
-
-```hcl
-aws_region = "us-east-1"
-
-# Generate a strong random password:
-# pwgen -s 32 1
-db_password = "your-secure-postgres-password"
-
-# Generate a random JWT secret:
-# openssl rand -base64 32
-jwt_secret = "your-jwt-secret-at-least-32-chars"
-
-# Your public IP for SSH debugging (optional - leave empty for SSM-only)
-# curl ifconfig.me
-my_ip = ""
-
-# Your forked repo URL
-app_repo_url = "https://github.com/your-org/competitor-tracker.git"
-```
-
-### Step 2: Deploy infrastructure
-
-```bash
+# Edit terraform.tfvars with your secrets
 terraform init
-terraform plan
 terraform apply
 ```
 
-This provisions: VPC, subnets, EC2 (t3.micro), RDS (db.t3.micro), S3 bucket, IAM roles, CloudWatch, Elastic IP.
+## 📚 Comprehensive Report
 
-The EC2 instance auto-installs Node.js 20, clones the app repo, installs deps, builds, and starts the Next.js server via PM2.
+For a **detailed 13-section architecture report** covering the system design, infrastructure, data flow, security, API reference, cost analysis, and lessons learned, see:
 
-### Step 3: Verify
+➡️ **[ARCHITECTURE.md](./ARCHITECTURE.md)**
 
-```bash
-terraform output app_url
-# → http://1.2.3.4:3000
+## 📸 Live Demo
 
-curl http://$(terraform output -raw app_ip):3000/api/health
-# → {"status":"ok"}
+**App URL**: http://competitor-tracker-alb-765681664.us-east-1.elb.amazonaws.com
+
+## 🛠 Tech Stack
+
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Inter + JetBrains Mono fonts
+- **Backend**: Next.js API Routes, PostgreSQL (node-postgres), JWT (jsonwebtoken), bcrypt
+- **Automation**: Puppeteer (headless Chrome), pixelmatch (visual diff), pngjs
+- **Infrastructure**: Terraform, AWS (EC2, ALB, RDS, S3, CloudWatch, IAM)
+- **Deployment**: GitHub Actions, AWS SSM, PM2
+
+## 📬 API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/signup` | Create account |
+| POST | `/api/auth/login` | Sign in |
+| GET | `/api/health` | Health check |
+| GET | `/api/tracked-pages` | List tracked pages |
+| POST | `/api/tracked-pages` | Add page to track |
+| DELETE | `/api/tracked-pages/:id` | Remove page |
+| GET | `/api/tracked-pages/:id/changes` | Change history |
+| POST | `/api/tracked-pages/:id/check-now` | Trigger check |
+| GET | `/api/tracked-pages/:id/visual-diff` | Visual diff image |
+
+## 📊 Database Schema
+
+```
+users → tracked_pages → snapshots → changes
+                             ↓
+                           S3 Bucket (HTML + screenshots)
 ```
 
-### Destroy
+## 🧪 Tests
 
 ```bash
-terraform destroy
+cd app && npm test
 ```
 
-**✅ 100% Free Tier eligible — no ALB costs.**
+11 tests covering the scraper/diff engine.
 
-## CI/CD
+## 📄 License
 
-On push to `main`:
-1. Build, typecheck, lint & test the app
+Open source — contributions welcome!
 
-Set this GitHub Secret:
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+---
 
-Note: Automated redeploy on push is not configured (requires redeploying the EC2 instance).
-
-## API Endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/auth/signup` | No | Create account |
-| POST | `/api/auth/login` | No | Sign in (JWT cookie) |
-| GET | `/api/health` | No | Health check (ALB target group) |
-| GET | `/api/tracked-pages` | Yes | List tracked pages |
-| POST | `/api/tracked-pages` | Yes | Add a page to track |
-| GET | `/api/tracked-pages/:id` | Yes | Get page details |
-| DELETE | `/api/tracked-pages/:id` | Yes | Remove a tracked page |
-| POST | `/api/tracked-pages/:id/check-now` | Yes | Trigger immediate check |
-| GET | `/api/tracked-pages/:id/changes` | Yes | Change history timeline |
-| POST | `/api/tracked-pages/:id/diff-content` | Yes | Get line-by-line diff |
-
-## Design Decisions (scoped out vs. production)
-
-### No NAT Gateway
-EC2 lives in public subnets with public IPs. RDS in private subnets has no outbound internet (it doesn't need it). Saves ~$33/month.
-
-### No headless browser
-Pages are fetched via plain HTTP GET + `cheerio` text extraction. This avoids Chromium's 300MB+ dependency and system-library headaches on a 1GB instance. JS-rendered SPAs won't be fully captured — that's a v2 enhancement.
-
-### No email/Slack alerts
-The tool tracks changes and shows them in the UI. Alerts are a natural v2 addition.
-
-### No multi-tenant/workspace support
-Each user sees only their own data. Team features are out of scope.
-
-### No custom domain, no HTTPS
-The app runs on HTTP port 3000 with an Elastic IP. No Route53, no ACM. Suitable for personal/development use only.
-
-### Local Terraform state
-No S3 backend — single-operator project. Swap to remote state before adding collaborators.
-
-## Estimated Monthly Cost
-
-| Service | Config | Est. Cost |
-|---------|--------|-----------|
-| EC2 | t3.micro (Free Tier: 750h/month) | **$0** ✅ |
-| RDS | db.t3.micro (Free Tier: 750h/month) | **$0** ✅ |
-| EIP | Elastic IP attached to running instance | **$0** ✅ |
-| S3 | Negligible storage | **$0** ✅ |
-| **Total** | | **$0/month** 🎉 |
-
-**100% Free Tier eligible** as long as your AWS account is within the first 12 months.
+*Built with Next.js, TypeScript, Terraform & AWS*

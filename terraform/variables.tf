@@ -40,6 +40,12 @@ variable "app_repo_url" {
   default     = "https://github.com/owner/competitor-tracker.git"
 }
 
+variable "ssl_certificate_arn" {
+  description = "ARN of the ACM SSL certificate for HTTPS listener (optional, leave empty for HTTP only)"
+  type        = string
+  default     = ""
+}
+
 variable "vpc_cidr" {
   description = "VPC CIDR block"
   type        = string
