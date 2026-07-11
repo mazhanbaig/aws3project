@@ -16,7 +16,7 @@ resource "aws_lb" "app" {
 # Target group for the ALB
 resource "aws_lb_target_group" "app" {
   name        = "competitor-tracker-tg"
-  port        = 3000
+  port        = 3001
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "instance"
@@ -28,7 +28,7 @@ resource "aws_lb_target_group" "app" {
     interval            = 30
     timeout             = 10
     path                = "/api/health"
-    port                = 3000
+    port                = 3001
     protocol            = "HTTP"
     matcher             = "200"
   }

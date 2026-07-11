@@ -5,8 +5,8 @@ resource "aws_security_group" "ec2" {
 
   ingress {
     description = "HTTP from ALB only"
-    from_port   = 3000
-    to_port     = 3000
+    from_port   = 3001
+    to_port     = 3001
     protocol    = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
