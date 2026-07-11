@@ -20,9 +20,12 @@ dnf install -y nodejs git
 
 echo "[$(date)] Node.js $(node -v) installed"
 
+# Skip Puppeteer Chromium download — we install system Chromium via dnf
+export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+echo 'export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true' >> /etc/profile.d/puppeteer.sh
+
 # Chromium for Puppeteer (AL2023)
 dnf install -y chromium 2>/dev/null || echo "[WARN] Chromium unavailable, Puppeteer will use bundled"
-echo 'export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true' >> /etc/profile.d/puppeteer.sh
 
 npm install -g pm2
 
