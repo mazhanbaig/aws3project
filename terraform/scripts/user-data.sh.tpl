@@ -1,7 +1,6 @@
-#!/bin/bash
+#!/bin/bash -x
+exec > /var/log/user-data.log 2>&1
 set -euo pipefail
-
-exec > >(tee -a /var/log/user-data.log) 2>&1
 
 echo "[$(date)] Starting user-data bootstrap..."
 
@@ -14,29 +13,27 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 
 echo "[$(date)] Swapfile configured"
 
-# Install Node.js 20 LTS (AL2023 uses dnf, not yum)
-curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-dnf install -y nodejs git
+# Install Node.js 20 LTS
+dnf install -y nodejs git npm 2>&1
 
 echo "[$(date)] Node.js $(node -v) installed"
 
-# Skip Puppeteer Chromium download — we install system Chromium via dnf
+# Skip Puppeteer Chromium download for faster npm ci
 export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-echo 'export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true' >> /etc/profile.d/puppeteer.sh
 
-# Chromium for Puppeteer (AL2023)
-dnf install -y chromium 2>/dev/null || echo "[WARN] Chromium unavailable, Puppeteer will use bundled"
-
-npm install -g pm2
+# Install PM2
+npm install -g pm2 2>&1
 
 echo "[$(date)] PM2 installed"
 
-git clone ${app_repo_url} /app
+# Clone repo
+rm -rf /app
+git clone --depth 1 ${app_repo_url} /app 2>&1
 cd /app/app
 
 echo "[$(date)] App cloned"
 
-# Write env file BEFORE build so it exists even if build fails
+# Write env file
 cat > .env.production << EOF
 DB_HOST=${db_host}
 DB_PORT=${db_port}
@@ -46,24 +43,25 @@ DB_PASSWORD=${db_password}
 JWT_SECRET=${jwt_secret}
 S3_BUCKET_NAME=${s3_bucket}
 AWS_REGION=${aws_region}
+PORT=3001
 EOF
 
 echo "[$(date)] Env file created"
 
-npm ci --prefer-offline
-npm run build
+# Install and build
+npm ci --prefer-offline 2>&1
+npm run build 2>&1
 
 echo "[$(date)] Build completed"
 
+# Copy to standalone
 cp -r .next/static .next/standalone/.next/
 cp -r public .next/standalone/ 2>/dev/null || true
 cp .env.production .next/standalone/
 
+# Start app
 set -a; source .env.production; set +a
+pm2 start .next/standalone/server.js --name "competitor-tracker" --update-env 2>&1
+pm2 save 2>&1
 
-export PORT=3001
-pm2 start .next/standalone/server.js --name "competitor-tracker" --update-env
-pm2 startup systemd -u root --hp /root
-pm2 save
-
-echo "[$(date)] Bootstrap complete — app running on port 3000"
+echo "[$(date)] Bootstrap complete — app running on port 3001"
