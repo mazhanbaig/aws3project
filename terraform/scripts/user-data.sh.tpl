@@ -61,6 +61,7 @@ cp .env.production .next/standalone/
 
 set -a; source .env.production; set +a
 
+export PORT=3001
 pm2 start .next/standalone/server.js --name "competitor-tracker" --update-env
 pm2 startup systemd -u root --hp /root
 pm2 save
