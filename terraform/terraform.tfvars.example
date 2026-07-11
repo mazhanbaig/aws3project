@@ -7,3 +7,5 @@ jwt_secret = "your-jwt-secret-here-at-least-32-chars"
 my_ip = ""
 
 app_repo_url = "https://github.com/owner/competitor-tracker.git"
+
+# ssl_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/your-cert-id"  # Optional: uncomment to enable HTTPS on the ALB
