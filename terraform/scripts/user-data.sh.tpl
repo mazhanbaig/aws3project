@@ -1,6 +1,13 @@
 #!/bin/bash -x
-exec > /var/log/user-data.log 2>&1
+exec > >(tee /var/log/user-data.log) 2>&1
 set -euo pipefail
+
+echo "[$(date)] Starting user-data bootstrap..."
+
+# Test basic commands first
+whoami 2>&1
+date 2>&1
+ls -la /tmp 2>&1
 
 echo "[$(date)] Starting user-data bootstrap..."
 
