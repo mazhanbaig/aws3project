@@ -274,5 +274,59 @@ Result:
   - Signup 500 root cause: RDS requires SSL + env vars missing → both fixed
   - Errors 1-4 from ERRORS.md: ALL fixed and verified
   - App is fully functional: signup, login, health check all work
-  - Security Group (Fix 1) still needs user decision — no ALB exists, options: nginx proxy or direct access
+
+## [2026-07-10] Task: Fix login redirect loop — cookie Secure flag
+Status: DONE
+Files touched:
+  - app/src/lib/auth.ts (added shouldUseSecureCookie() helper)
+  - app/src/app/api/auth/signup/route.ts (uses shouldUseSecureCookie())
+  - app/src/app/api/auth/login/route.ts (uses shouldUseSecureCookie())
+Commands run:
+  - git commit -m 'Fix cookie secure flag' && git push
+  - SSM: Deployed to EC2, PM2 restart with PORT=3001
+  - curl -v /api/auth/login → Set-Cookie without Secure flag ✅
+Result:
+  - Root cause: cookie had `secure: true` because `NODE_ENV=production`, but EC2 serves HTTP
+  - Fix: set `secure` based on actual protocol (x-forwarded-proto or req.nextUrl.protocol)
+  - Browser will now accept the cookie over HTTP → dashboard redirect works
+
+## [2026-07-10] Task: Add try/catch to all remaining API routes
+Status: DONE
+Files touched:
+  - app/src/app/api/tracked-pages/route.ts (try/catch GET & POST)
+  - app/src/app/api/tracked-pages/[id]/route.ts (try/catch DELETE & GET)
+  - app/src/app/api/tracked-pages/[id]/changes/route.ts (try/catch GET, removed unused imports)
+  - app/src/app/api/tracked-pages/[id]/check-now/route.ts (try/catch POST)
+  - app/app/.env.local.example (created with placeholder values)
+Commands run:
+  - git commit -m 'Add try/catch to all remaining API routes' && git push
+  - git commit -m 'Fix .env.local.example: use placeholder values' && git push
+  - SSM: Deployed to EC2, build + PM2 restart
+  - curl /api/auth/signup → HTTP 201 ✅
+  - curl /api/auth/login → HTTP 200, cookie without Secure ✅
+Result:
+  - ALL 10 API route handlers now have try/catch wrappers with consistent error logging
+  - No unhandled errors will produce empty 500 responses
+  - .env.local.example uses placeholder values (no real credentials in repo)
+
+## [2026-07-10] Task: Security Group — Nginx reverse proxy, app on port 3001
+Status: DONE
+Files touched:
+  - Nginx installed and configured on EC2 (proxies port 80 → localhost:3001)
+  - EC2 security group: port 80 opened, port 3000 closed
+Commands run:
+  - SSM: Installed Nginx on EC2 via yum
+  - SSM: Wrote Nginx config (port 80 → 127.0.0.1:3001)
+  - SSM: Restarted PM2 with PORT=3001 (app now on port 3001 internally)
+  - aws ec2 authorize-security-group-ingress --port 80
+  - aws ec2 revoke-security-group-ingress --port 3000
+  - curl http://3.212.52.132:80/api/health → HTTP 200 {"status":"ok"} ✅
+  - curl http://3.212.52.132:80/api/auth/signup → HTTP 201 ✅
+  - curl http://3.212.52.132:3000/api/health → Connection refused (closed) ✅
+  - curl http://3.212.52.132:3001/api/health → Connection refused (closed) ✅
+Result:
+  - App accessible via http://3.212.52.132 (port 80) through Nginx
+  - Port 3000 and 3001 closed to internet — app only accessible via Nginx proxy
+  - Cookie works correctly (no Secure flag over HTTP)
+  - Full auth flow works through port 80
 ---

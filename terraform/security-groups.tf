@@ -1,14 +1,14 @@
 resource "aws_security_group" "ec2" {
   name        = "competitor-tracker-ec2-sg-v2"
-  description = "EC2 security group - inbound HTTP on 3000 from anywhere, SSH optional"
+  description = "EC2 security group - inbound HTTP on 3000 from ALB only, SSH optional"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "HTTP app from anywhere"
+    description = "HTTP from ALB only"
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [aws_security_group.alb.id]
   }
 
   dynamic "ingress" {

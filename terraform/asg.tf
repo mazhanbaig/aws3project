@@ -65,6 +65,13 @@ resource "aws_instance" "app" {
   }
 }
 
+# Attach the EC2 instance to the ALB target group
+resource "aws_lb_target_group_attachment" "app" {
+  target_group_arn = aws_lb_target_group.app.arn
+  target_id        = aws_instance.app.id
+  port             = 3000
+}
+
 resource "aws_eip" "app" {
   domain = "vpc"
 

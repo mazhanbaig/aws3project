@@ -116,31 +116,103 @@ function DashboardContent() {
     router.push('/login');
   }
 
+  // Stats derived from pages
+  const totalChanges = pages.reduce((sum, p) => sum + parseInt(p.changes_count || '0'), 0);
+  const recentlyChecked = pages.filter(p => p.last_checked_at && Date.now() - new Date(p.last_checked_at).getTime() < 3600000).length;
+  const withScreenshots = pages.filter(p => p.screenshot_enabled).length;
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-border bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent-600 text-white flex items-center justify-center text-sm font-semibold">CT</div>
-            <h1 className="text-lg font-semibold tracking-tight">Competitor Tracker</h1>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-sm font-bold shadow-glow">CT</div>
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+              <p className="text-xs text-muted -mt-0.5">Competitor Tracker</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={() => setShowAdd(!showAdd)} className="btn-primary">
+          <div className="flex items-center gap-2">
+            <Link href="/" className="btn-ghost text-xs hidden sm:inline-flex">
+              <svg className="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              Home
+            </Link>
+            <button onClick={() => setShowAdd(!showAdd)} className="btn-primary text-sm">
               <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
               {showAdd ? 'Cancel' : 'Add page'}
             </button>
-            <button onClick={handleLogout} className="btn-ghost">Sign out</button>
+            <button onClick={handleLogout} className="btn-ghost text-sm">Sign out</button>
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
+        {/* Stats summary bar */}
+        {pages.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8 animate-slide-up">
+            <div className="card p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 leading-none">{pages.length}</p>
+                  <p className="text-xs text-muted mt-1">Tracked pages</p>
+                </div>
+              </div>
+            </div>
+            <div className="card p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 leading-none">{totalChanges}</p>
+                  <p className="text-xs text-muted mt-1">Total changes</p>
+                </div>
+              </div>
+            </div>
+            <div className="card p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 leading-none">{recentlyChecked}</p>
+                  <p className="text-xs text-muted mt-1">Checked this hour</p>
+                </div>
+              </div>
+            </div>
+            <div className="card p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-pink-500 to-rose-500 text-white flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.828 12h8.484M9.828 12l-1.414-1.414M9.828 12l1.414 1.414M12 4v16" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 leading-none">{withScreenshots}</p>
+                  <p className="text-xs text-muted mt-1">With screenshots</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showAdd && (
           <form onSubmit={handleAdd} className="card p-6 mb-8 animate-slide-up space-y-5">
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-8 h-8 rounded-lg bg-accent-50 text-accent-600 flex items-center justify-center text-sm font-semibold">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center text-sm font-semibold shadow-glow">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
@@ -195,13 +267,36 @@ function DashboardContent() {
           </div>
         ) : pages.length === 0 && !showAdd ? (
           <div className="card p-16 text-center animate-fade-in">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-soft mb-5">
-              <svg className="w-7 h-7 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 mb-6 shadow-inner-soft">
+              <svg className="w-8 h-8 text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
             </div>
-            <h2 className="text-lg font-medium text-gray-900 mb-2">No pages tracked yet</h2>
-            <p className="text-sm text-muted mb-6 max-w-sm mx-auto">Add competitor URLs to start monitoring.</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">No pages tracked yet</h2>
+            <p className="text-sm text-muted mb-8 max-w-md mx-auto leading-relaxed">
+              Start monitoring your competitors by adding a URL. We&apos;ll track changes and notify you automatically.
+            </p>
+
+            {/* Quick tips */}
+            <div className="max-w-sm mx-auto mb-8">
+              <div className="space-y-3 text-left">
+                {[
+                  { icon: '🔗', title: 'Add a competitor URL', desc: 'Pricing pages, feature lists, or changelogs' },
+                  { icon: '⏰', title: 'Set check frequency', desc: 'Hourly, daily, or weekly — you decide' },
+                  { icon: '📸', title: 'Enable screenshots', desc: 'Visual diffs for pixel-perfect comparison' },
+                  { icon: '🔔', title: 'Get notified', desc: 'We alert you when something changes' },
+                ].map((tip) => (
+                  <div key={tip.title} className="flex items-start gap-3">
+                    <span className="text-lg shrink-0">{tip.icon}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{tip.title}</p>
+                      <p className="text-xs text-muted">{tip.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <button onClick={() => setShowAdd(true)} className="btn-primary">
               <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -222,7 +317,7 @@ function DashboardContent() {
                     <div className="flex items-center justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-accent-50 text-accent-600 flex items-center justify-center text-xs font-semibold shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
                             {page.label.charAt(0).toUpperCase()}
                           </div>
                           <div>

@@ -1,10 +1,15 @@
 output "app_url" {
-  description = "The URL to access the app (HTTP on port 3000)"
-  value       = "http://${aws_eip.app.public_ip}:3000"
+  description = "The URL to access the app through the ALB"
+  value       = "http://${aws_lb.app.dns_name}"
+}
+
+output "alb_dns_name" {
+  description = "The DNS name of the Application Load Balancer"
+  value       = aws_lb.app.dns_name
 }
 
 output "app_ip" {
-  description = "The public IP of the EC2 instance"
+  description = "The public IP of the EC2 instance (for direct access / debugging)"
   value       = aws_eip.app.public_ip
 }
 
