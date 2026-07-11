@@ -36,6 +36,15 @@ resource "aws_launch_template" "app" {
     app_repo_url = var.app_repo_url
   }))
 
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = 30
+      volume_type           = "gp3"
+      delete_on_termination = true
+    }
+  }
+
   tag_specifications {
     resource_type = "instance"
     tags = {
