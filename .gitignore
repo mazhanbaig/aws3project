@@ -13,3 +13,5 @@ node_modules/
 terraform.exe
 next-env.d.ts
 *.tsbuildinfo
+terraform/lambdas.zip
+tfplan

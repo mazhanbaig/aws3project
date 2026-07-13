@@ -116,7 +116,7 @@ resource "aws_api_gateway_rest_api" "api" {
 
 resource "aws_api_gateway_resource" "auth" {
   rest_api_id = aws_api_gateway_rest_api.api.id
-  parent_id   = aws_api_gateway_rest_api.api.root
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
   path_part   = "auth"
 }
 
@@ -134,7 +134,7 @@ resource "aws_api_gateway_resource" "auth_login" {
 
 resource "aws_api_gateway_resource" "projects" {
   rest_api_id = aws_api_gateway_rest_api.api.id
-  parent_id   = aws_api_gateway_rest_api.api.root
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
   path_part   = "projects"
 }
 
@@ -186,13 +186,16 @@ resource "aws_api_gateway_integration" "route" {
 
 # OPTIONS methods for CORS
 locals {
-  cors_resources = distinct([
-    for r in local.api_routes : r.resource
-  ])
+  cors_map = {
+    auth_signup  = aws_api_gateway_resource.auth_signup.id
+    auth_login   = aws_api_gateway_resource.auth_login.id
+    projects     = aws_api_gateway_resource.projects.id
+    project      = aws_api_gateway_resource.project.id
+  }
 }
 
 resource "aws_api_gateway_method" "options" {
-  for_each    = toset(local.cors_resources)
+  for_each    = local.cors_map
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = each.value
   http_method = "OPTIONS"
@@ -200,7 +203,7 @@ resource "aws_api_gateway_method" "options" {
 }
 
 resource "aws_api_gateway_integration" "options" {
-  for_each    = toset(local.cors_resources)
+  for_each    = local.cors_map
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = each.value
   http_method = "OPTIONS"
@@ -212,7 +215,7 @@ resource "aws_api_gateway_integration" "options" {
 }
 
 resource "aws_api_gateway_method_response" "options_200" {
-  for_each    = toset(local.cors_resources)
+  for_each    = local.cors_map
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = each.value
   http_method = "OPTIONS"
@@ -226,7 +229,7 @@ resource "aws_api_gateway_method_response" "options_200" {
 }
 
 resource "aws_api_gateway_integration_response" "options" {
-  for_each    = toset(local.cors_resources)
+  for_each    = local.cors_map
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = each.value
   http_method = "OPTIONS"
@@ -270,5 +273,5 @@ resource "aws_api_gateway_stage" "prod" {
 
 output "api_gateway_url" {
   description = "API Gateway endpoint URL"
-  value       = "${aws_api_gateway_deployment.api.invoke_url}/prod"
+  value       = "https://${aws_api_gateway_rest_api.api.id}.execute-api.${var.aws_region}.amazonaws.com/prod"
 }
