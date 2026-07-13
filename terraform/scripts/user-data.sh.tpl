@@ -16,7 +16,7 @@ NEXT_PUBLIC_API_URL=${api_gateway_url}
 PORT=3001
 ENVEOF
 
-npm ci --prefer-offline || exit 1
+npm install --no-audit --no-fund || exit 1
 npm run build || exit 1
 
 cp -r .next/static .next/standalone/.next/
