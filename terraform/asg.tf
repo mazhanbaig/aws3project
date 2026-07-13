@@ -25,15 +25,8 @@ resource "aws_launch_template" "app" {
   vpc_security_group_ids = [aws_security_group.ec2.id]
 
   user_data = base64encode(templatefile("${path.module}/scripts/user-data.sh.tpl", {
-    db_host      = aws_db_instance.postgres.address
-    db_port      = aws_db_instance.postgres.port
-    db_name      = "competitor_tracker"
-    db_user      = "app"
-    db_password  = var.db_password
-    jwt_secret   = var.jwt_secret
-    s3_bucket    = aws_s3_bucket.snapshots.bucket
-    aws_region   = var.aws_region
-    app_repo_url = var.app_repo_url
+    app_repo_url   = var.app_repo_url
+    api_gateway_url = "https://${aws_api_gateway_rest_api.api.id}.execute-api.${var.aws_region}.amazonaws.com/prod"
   }))
 
   block_device_mappings {

@@ -1,0 +1,10 @@
+{
+  "name": "projectfolio-lambdas",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "pg": "^8.12.0",
+    "jsonwebtoken": "^9.0.2",
+    "bcrypt": "^5.1.1"
+  }
+}
