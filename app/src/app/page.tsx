@@ -32,7 +32,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white flex items-center justify-center text-sm font-bold shadow-md group-hover:shadow-lg group-hover:shadow-indigo-500/25 transition-shadow">PF</div>
-            <span className="font-semibold text-gray-900">ProjectFolio</span>
+            <span className="font-semibold text-gray-900">ProjectFolio000000</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link href="/projects" className="btn-ghost">Explored</Link>
