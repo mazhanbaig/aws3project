@@ -40,6 +40,36 @@ variable "app_repo_url" {
   default     = "https://github.com/owner/competitor-tracker.git"
 }
 
+variable "app_ami_id" {
+  description = "AMI ID baked by Packer. If empty, uses latest Amazon Linux 2023"
+  type        = string
+  default     = ""
+}
+
+variable "asg_min_size" {
+  description = "ASG minimum instance count"
+  type        = number
+  default     = 1
+}
+
+variable "asg_max_size" {
+  description = "ASG maximum instance count"
+  type        = number
+  default     = 2
+}
+
+variable "asg_desired_capacity" {
+  description = "ASG desired instance count"
+  type        = number
+  default     = 1
+}
+
+variable "app_branch" {
+  description = "Git branch to deploy"
+  type        = string
+  default     = "main"
+}
+
 variable "ssl_certificate_arn" {
   description = "ARN of the ACM SSL certificate for HTTPS listener (optional, leave empty for HTTP only)"
   type        = string
