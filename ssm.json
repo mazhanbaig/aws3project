@@ -1,1 +1,0 @@
-{ "InstanceIds": ["i-0cf87cb77073b6f90"], "DocumentName": "AWS-RunShellScript", "Parameters": { "commands": ["cat /var/log/cloud-init-output.log | head -20"] } }
