@@ -2,7 +2,7 @@ name: 🚀 CI/CD Pipeline
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
     inputs:
       force_deploy:
@@ -240,7 +240,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["set -e","cd /app && git pull origin master","cd /app/app && npm ci --omit=dev","npm run build","cp -r .next/static .next/standalone/.next/","cp -r public .next/standalone/ 2>/dev/null || true","pm2 restart projectfolio","echo ✅ Deploy complete"]' \
+            --parameters 'commands=["set -e","cd /app && git pull origin main","cd /app/app && npm ci --omit=dev","npm run build","cp -r .next/static .next/standalone/.next/","cp -r public .next/standalone/ 2>/dev/null || true","pm2 restart projectfolio","echo ✅ Deploy complete"]' \
             --timeout-seconds 300 \
             --query "Command.CommandId" \
             --output text)
