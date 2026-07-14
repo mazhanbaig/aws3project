@@ -37,6 +37,19 @@ data "aws_iam_policy_document" "github_actions" {
     actions   = ["ssm:GetCommandInvocation"]
     resources = ["arn:aws:ssm:${var.aws_region}:*:*"]
   }
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject",
+      "s3:ListBucket",
+      "s3:DeleteObject"
+    ]
+    resources = [
+      "arn:aws:s3:::competitor-tracker-terraform-state",
+      "arn:aws:s3:::competitor-tracker-terraform-state/*"
+    ]
+  }
 }
 
 resource "aws_iam_user_policy" "github_actions" {
