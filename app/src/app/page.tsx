@@ -59,7 +59,7 @@ export default function HomePage() {
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 leading-[1.08] mb-6 animate-slide-up">
             Where developers{' '}
-            <span className="gradient-text">showcase</span>
+            <span className="gradient-text">showcassssssse</span>
             <br />
             their best work
           </h1>
