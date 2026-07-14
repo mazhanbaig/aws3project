@@ -1,131 +1,157 @@
 #!/bin/bash
 
-# ProjectFolio CI/CD Pipeline Video Recording Script
-# This script helps record a 2-3 minute video demonstrating the entire project
+# ProjectFolio Video Recording Script
+# Records terminal session and browser for CI/CD pipeline demo
 
-echo "🎬 ProjectFolio Video Recording Guide"
-echo "======================================"
-echo ""
-echo "This script provides a step-by-step guide to record the video."
-echo "Please follow the instructions below."
-echo ""
+set -e
+
+echo "🎬 ProjectFolio Video Recording"
+echo "================================"
+
+# Configuration
+RECORDING_DIR="recordings"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+TERMINAL_CAST="${RECORDING_DIR}/terminal_${TIMESTAMP}.cast"
+BROWSER_VIDEO="${RECORDING_DIR}/browser_${TIMESTAMP}.mp4"
+OUTPUT_VIDEO="${RECORDING_DIR}/projectfolio_demo_${TIMESTAMP}.mp4"
+
+# Create recordings directory
+mkdir -p "$RECORDING_DIR"
 
 # Check for required tools
-echo "Checking for required tools..."
-if ! command -v asciinema &> /dev/null; then
-    echo "⚠️  asciinema not found. Install it with:"
-    echo "   npm install -g asciinema"
+check_tools() {
+    local missing=()
+    
+    if ! command -v asciinema &> /dev/null; then
+        missing+=("asciinema")
+    fi
+    
+    if ! command -v ffmpeg &> /dev/null; then
+        missing+=("ffmpeg")
+    fi
+    
+    if ! command -v agg &> /dev/null; then
+        missing+=("agg (asciinema agg)")
+    fi
+    
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "❌ Missing required tools:"
+        for tool in "${missing[@]}"; do
+            echo "   - $tool"
+        done
+        echo ""
+        echo "Install with:"
+        echo "  npm install -g asciinema agg"
+        echo "  brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"
+        exit 1
+    fi
+}
+
+# Record terminal session
+record_terminal() {
+    echo "📹 Starting terminal recording..."
+    echo "Press Ctrl+D or type 'exit' to stop recording"
     echo ""
-fi
-
-if ! command -v ffmpeg &> /dev/null; then
-    echo "⚠️  ffmpeg not found. Install it for video conversion:"
-    echo "   brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"
+    
+    # Start asciinema recording
+    asciinema rec "$TERMINAL_CAST" -c "bash"
+    
     echo ""
-fi
+    echo "✅ Terminal recording saved to: $TERMINAL_CAST"
+}
 
-echo ""
-echo "📹 Video Recording Plan (2-3 minutes)"
-echo "====================================="
-echo ""
-echo "Part 1: Project Overview (30 seconds)"
-echo "  - Show project structure"
-echo "  - Explain key files and directories"
-echo "  - Highlight Terraform and GitHub Actions setup"
-echo ""
-echo "Part 2: CI/CD Pipeline Demonstration (60 seconds)"
-echo "  - Show .github/workflows/deploy.yml"
-echo "  - Explain the pipeline stages:"
-echo "    1. Change detection"
-echo "    2. Testing"
-echo "    3. Terraform plan/apply"
-echo "    4. Application deployment"
-echo "    5. Summary generation"
-echo ""
-echo "Part 3: Terraform Infrastructure (30 seconds)"
-echo "  - Show terraform/ directory structure"
-echo "  - Explain key resources:"
-echo "    - VPC and networking"
-echo "    - EC2 and ALB"
-echo "    - RDS database"
-echo "    - Lambda functions"
-echo "    - API Gateway"
-echo ""
-echo "Part 4: Browser Demo (30-45 seconds)"
-echo "  - Start local development server"
-echo "  - Navigate through the application:"
-echo "    - Homepage"
-echo "    - Signup/Login"
-echo "    - Dashboard"
-echo "    - Project showcase"
-echo ""
-echo "Part 5: Deployment Demonstration (30 seconds)"
-echo "  - Show GitHub Actions in action"
-echo "  - Demonstrate change detection"
-echo "  - Show Terraform plan output"
-echo "  - Show deployment logs"
-echo ""
+# Record browser with ffmpeg
+record_browser() {
+    local duration=${1:-30}  # Default 30 seconds
+    
+    echo "🌐 Starting browser recording for ${duration} seconds..."
+    echo "Make sure the browser window is visible on screen"
+    echo ""
+    
+    # Get screen dimensions (adjust for your display)
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        SCREEN_SIZE=$(system_profiler SPDisplaysDataType | grep Resolution | awk '{print $2 "x" $4}')
+    else
+        # Linux
+        SCREEN_SIZE=$(xrandr | grep '*' | awk '{print $1}' | head -1)
+    fi
+    
+    # Record screen with ffmpeg
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS - record specific window or full screen
+        ffmpeg -f avfoundation -r 30 -i "1" -t "$duration" -c:v libx264 -preset fast -crf 23 "$BROWSER_VIDEO"
+    else
+        # Linux - record full screen
+        ffmpeg -f x11grab -r 30 -video_size "$SCREEN_SIZE" -i :0.0 -t "$duration" -c:v libx264 -preset fast -crf 23 "$BROWSER_VIDEO"
+    fi
+    
+    echo ""
+    echo "✅ Browser recording saved to: $BROWSER_VIDEO"
+}
 
-echo "🎥 Recording Instructions"
-echo "========================"
-echo ""
-echo "Option 1: Terminal Recording with asciinema"
-echo "  1. Start recording: asciinema rec projectfolio-demo.cast"
-echo "  2. Follow the script above"
-echo "  3. Stop recording: exit or Ctrl+D"
-echo "  4. Convert to video: agg projectfolio-demo.cast projectfolio-demo.gif"
-echo ""
-echo "Option 2: Screen Recording"
-echo "  1. Use OBS Studio, Loom, or built-in screen recorder"
-echo "  2. Record terminal and browser windows"
-echo "  3. Edit and combine footage"
-echo ""
-echo "Option 3: GitHub Actions Logs"
-echo "  1. Trigger a workflow run"
-echo "  2. Screen record the GitHub Actions page"
-echo "  3. Show the job summaries and logs"
-echo ""
+# Combine recordings
+combine_videos() {
+    echo "🔄 Combining recordings..."
+    
+    # Convert terminal cast to video
+    agg "$TERMINAL_CAST" "${RECORDING_DIR}/terminal_video.mp4"
+    
+    # Combine terminal and browser videos
+    if [ -f "$BROWSER_VIDEO" ]; then
+        # Create concat file
+        echo "file '${RECORDING_DIR}/terminal_video.mp4'" > "${RECORDING_DIR}/concat.txt"
+        echo "file '$BROWSER_VIDEO'" >> "${RECORDING_DIR}/concat.txt"
+        
+        # Concatenate videos
+        ffmpeg -f concat -safe 0 -i "${RECORDING_DIR}/concat.txt" -c copy "$OUTPUT_VIDEO"
+        
+        echo "✅ Combined video saved to: $OUTPUT_VIDEO"
+    else
+        # Just use terminal video
+        cp "${RECORDING_DIR}/terminal_video.mp4" "$OUTPUT_VIDEO"
+        echo "✅ Terminal video saved to: $OUTPUT_VIDEO"
+    fi
+}
 
-echo "📝 Script for Recording"
-echo "======================"
-echo ""
-echo "Here's a script you can follow while recording:"
-echo ""
-echo "1. Show project structure:"
-echo "   ls -la"
-echo "   find . -type f -name '*.tf' | head -20"
-echo "   find . -type f -name '*.yml' | head -10"
-echo ""
-echo "2. Explain CI/CD pipeline:"
-echo "   cat .github/workflows/deploy.yml"
-echo ""
-echo "3. Show Terraform configuration:"
-echo "   cd terraform"
-echo "   terraform init"
-echo "   terraform plan"
-echo ""
-echo "4. Start local development:"
-echo "   cd app"
-echo "   npm install"
-echo "   npm run dev"
-echo ""
-echo "5. Demo browser application:"
-echo "   Open http://localhost:3000"
-echo "   Navigate through the application"
-echo ""
+# Main recording flow
+main() {
+    check_tools
+    
+    echo ""
+    echo "📋 Recording Plan:"
+    echo "  1. Terminal recording (project overview, CI/CD pipeline, Terraform)"
+    echo "  2. Browser recording (application demo)"
+    echo "  3. Combine into final video"
+    echo ""
+    
+    read -p "Start recording? (y/n) " -n 1 -r
+    echo ""
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        # Record terminal
+        record_terminal
+        
+        # Ask for browser recording
+        read -p "Record browser behavior? (y/n) " -n 1 -r
+        echo ""
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            read -p "Browser recording duration (seconds, default 30): " duration
+            duration=${duration:-30}
+            record_browser "$duration"
+        fi
+        
+        # Combine videos
+        combine_videos
+        
+        echo ""
+        echo "🎉 Recording complete!"
+        echo "Files saved in: $RECORDING_DIR/"
+    else
+        echo "Recording cancelled."
+    fi
+}
 
-echo "✅ Recording Tips"
-echo "================"
-echo ""
-echo "- Keep explanations concise and clear"
-echo "- Use a good microphone for audio"
-echo "- Ensure screen recording captures full HD (1920x1080)"
-echo "- Practice the flow before recording"
-echo "- Edit out any mistakes or pauses"
-echo ""
-
-echo "🚀 Ready to Record!"
-echo "=================="
-echo ""
-echo "Good luck with your video recording!"
-echo "Remember to save the video in a shareable format (MP4, GIF, or WebM)"
+# Run main function
+main
