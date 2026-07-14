@@ -35,7 +35,7 @@ export default function HomePage() {
             <span className="font-semibold text-gray-900">ProjectFolio</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Link href="/projects" className="btn-ghost">Explore</Link>
+            <Link href="/projects" className="btn-ghost">Explored</Link>
             <DarkToggle />
             {isLoggedIn ? (
               <Link href="/dashboard" className="btn-primary text-sm">Dashboard</Link>
