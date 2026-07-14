@@ -82,7 +82,7 @@ For a **detailed 13-section architecture report** covering the system design, in
 
 ## 📸 Live Demo
 
-**App URL**: http://competitor-tracker-alb-765681664.us-east-1.elb.amazonaws.com
+**App URL**: http://competitor-tracker-alb-910172219.us-east-1.elb.amazonaws.com
 
 ## 🛠 Tech Stack
 

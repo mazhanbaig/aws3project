@@ -4,7 +4,7 @@
 
 ### Frontend (ALB)
 ```
-http://competitor-tracker-alb-765681664.us-east-1.elb.amazonaws.com
+http://competitor-tracker-alb-910172219.us-east-1.elb.amazonaws.com
 ```
 
 ### Direct EC2 Access
@@ -14,7 +14,7 @@ http://3.212.52.132:3001
 
 ### API Gateway (Lambda Backend)
 ```
-https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod
+https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod
 ```
 
 ---
@@ -23,13 +23,13 @@ https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod
 
 | Method | URL | Description |
 |--------|-----|-------------|
-| POST | `https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod/auth/signup` | Create account |
-| POST | `https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod/auth/login` | Sign in |
-| GET | `https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod/projects` | List all projects |
-| GET | `https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod/projects/{id}` | Get single project |
-| POST | `https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod/projects` | Create project |
-| DELETE | `https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod/projects/{id}` | Delete project |
-| GET | `https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod/users/{id}` | Get user profile |
+| POST | `https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod/auth/signup` | Create account |
+| POST | `https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod/auth/login` | Sign in |
+| GET | `https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod/projects` | List all projects |
+| GET | `https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod/projects/{id}` | Get single project |
+| POST | `https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod/projects` | Create project |
+| DELETE | `https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod/projects/{id}` | Delete project |
+| GET | `https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod/users/{id}` | Get user profile |
 
 ---
 
@@ -37,9 +37,9 @@ https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod
 
 | Service | URL |
 |---------|-----|
-| **App (ALB)** | http://competitor-tracker-alb-765681664.us-east-1.elb.amazonaws.com |
+| **App (ALB)** | http://competitor-tracker-alb-910172219.us-east-1.elb.amazonaws.com |
 | **EC2 Direct** | http://3.212.52.132:3001 |
-| **API Gateway** | https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod |
+| **API Gateway** | https://n721p9o591.execute-api.us-east-1.amazonaws.com/prod |
 | **GitHub Repo** | https://github.com/mazhanbaig/aws3project |
 
 ---

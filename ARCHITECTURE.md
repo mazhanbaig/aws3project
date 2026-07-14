@@ -74,5 +74,5 @@ terraform apply -auto-approve
 
 | Service | URL |
 |---------|-----|
-| ALB (Frontend) | `http://competitor-tracker-alb-765681664.us-east-1.elb.amazonaws.com` |
+| ALB (Frontend) | `http://competitor-tracker-alb-910172219.us-east-1.elb.amazonaws.com` |
 | API Gateway | `https://4w0h6px9i6.execute-api.us-east-1.amazonaws.com/prod` |
