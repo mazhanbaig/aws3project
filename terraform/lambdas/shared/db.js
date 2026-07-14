@@ -39,6 +39,8 @@ async function initSchema() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(100);`);
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`);
   await query(`
     CREATE TABLE IF NOT EXISTS projects (
       id SERIAL PRIMARY KEY,
@@ -53,6 +55,12 @@ async function initSchema() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+  await query(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS description TEXT;`);
+  await query(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS tech_stack TEXT[] DEFAULT '{}';`);
+  await query(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS github_url TEXT;`);
+  await query(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS live_url TEXT;`);
+  await query(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS image_url TEXT;`);
+  await query(`ALTER TABLE projects ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false;`);
 }
 
 function corsHeaders() {

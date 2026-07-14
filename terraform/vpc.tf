@@ -81,3 +81,36 @@ resource "aws_route_table_association" "public_c" {
   subnet_id      = aws_subnet.public_c.id
   route_table_id = aws_route_table.public.id
 }
+
+# Private subnets using default main route table
+# VPC Endpoint for CloudWatch Logs (Interface type)
+resource "aws_security_group" "vpce_logs" {
+  name        = "projectfolio-vpce-logs-sg"
+  description = "Security group for CloudWatch Logs VPC Endpoint"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "HTTPS from VPC CIDR"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  tags = {
+    Name = "projectfolio-vpce-logs-sg"
+  }
+}
+
+resource "aws_vpc_endpoint" "cloudwatch_logs" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.aws_region}.logs"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.private_a.id, aws_subnet.private_c.id]
+  security_group_ids  = [aws_security_group.vpce_logs.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "projectfolio-logs-vpce"
+  }
+}

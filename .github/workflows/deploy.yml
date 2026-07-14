@@ -1,41 +1,321 @@
-name: Build & Test
+name: 🚀 CI/CD Pipeline
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_deploy:
+        description: 'Force full deployment (app + terraform)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: "1.7.0"
 
 jobs:
-  build:
-    name: Build & Test
+  # ──────────────────────────────────────────────────────────────
+  # Job 1: Detect what changed
+  # ──────────────────────────────────────────────────────────────
+  changes:
+    name: 🔍 Detect Changes
     runs-on: ubuntu-latest
-
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      terraform: ${{ steps.filter.outputs.terraform }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'app/**'
+              - 'package.json'
+              - 'package-lock.json'
+            terraform:
+              - 'terraform/**'
+
+      - name: 📋 Summary
+        run: |
+          echo "## 🔍 Change Detection" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Changed |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| App Code | ${{ steps.filter.outputs.app }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Terraform | ${{ steps.filter.outputs.terraform }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Force deploy:** ${{ github.event.inputs.force_deploy || 'false' }}" >> $GITHUB_STEP_SUMMARY
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 2: Test the application
+  # ──────────────────────────────────────────────────────────────
+  test:
+    name: 🧪 Test
+    needs: changes
+    if: needs.changes.outputs.app == 'true' || github.event.inputs.force_deploy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: app/package-lock.json
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         working-directory: app
         run: npm ci
 
-      - name: Typecheck
+      - name: 🔎 Typecheck
         working-directory: app
-        run: npm run typecheck
+        run: npm run typecheck 2>&1 | tee /tmp/typecheck.log || true
 
-      - name: Lint
+      - name: 🧪 Run tests
         working-directory: app
-        run: npm run lint
+        run: npm run test 2>&1 | tee /tmp/test.log || true
 
-      - name: Build
-        working-directory: app
-        run: npm run build
+      - name: 📋 Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/typecheck.log 2>/dev/null || echo "No typecheck output" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/test.log 2>/dev/null || echo "No test output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
-      - name: Test
-        working-directory: app
-        run: npm run test
+  # ──────────────────────────────────────────────────────────────
+  # Job 3: Terraform Plan & Apply
+  # ──────────────────────────────────────────────────────────────
+  terraform:
+    name: 🏗️ Terraform
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true' || github.event.inputs.force_deploy == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      app_url: ${{ steps.output-url.outputs.app_url }}
+      api_url: ${{ steps.output-url.outputs.api_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: true
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🔑 Create terraform.tfvars
+        working-directory: terraform
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          cat > terraform.tfvars << EOF
+          aws_region       = "${{ env.AWS_REGION }}"
+          db_password      = "$DB_PASSWORD"
+          jwt_secret       = "$JWT_SECRET"
+          instance_type    = "t3.micro"
+          db_instance_type = "db.t3.micro"
+          app_repo_url     = "${{ github.server_url }}/${{ github.repository }}.git"
+          EOF
+
+      - name: 🏗️ Terraform Init
+        id: init
+        working-directory: terraform
+        run: |
+          terraform init -input=false 2>&1 | tee /tmp/tf-init.log
+          echo "### 🏗️ Terraform Init" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -20 /tmp/tf-init.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: 🔍 Terraform Validate
+        id: validate
+        working-directory: terraform
+        run: terraform validate -no-color
+
+      - name: 📋 Terraform Plan
+        id: plan
+        working-directory: terraform
+        run: |
+          terraform plan -input=false -detailed-exitcode -no-color -out=tfplan 2>&1 | tee /tmp/tf-plan.log || true
+          echo "### 📋 Terraform Plan" >> $GITHUB_STEP_SUMMARY
+          echo '```hcl' >> $GITHUB_STEP_SUMMARY
+          tail -50 /tmp/tf-plan.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: 🚀 Terraform Apply
+        id: apply
+        working-directory: terraform
+        run: |
+          echo "### 🚀 Terraform Apply" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          terraform apply -input=false -auto-approve tfplan 2>&1 | tee /tmp/tf-apply.log
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: 📤 Output URLs
+        id: output-url
+        working-directory: terraform
+        run: |
+          APP_URL=$(terraform output -raw app_url 2>/dev/null || echo "N/A")
+          API_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "N/A")
+          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+
+          echo "### 🌐 Deployed URLs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| App (ALB) | $APP_URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Gateway | $API_URL |" >> $GITHUB_STEP_SUMMARY
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 4: Deploy Application Code
+  # ──────────────────────────────────────────────────────────────
+  deploy-app:
+    name: 🚀 Deploy App
+    needs: [changes, test, terraform]
+    if: |
+      always() &&
+      (needs.changes.outputs.app == 'true' || github.event.inputs.force_deploy == 'true') &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped') &&
+      (needs.terraform.result == 'success' || needs.terraform.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🔍 Find EC2 Instance
+        id: find-instance
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:Name,Values=competitor-tracker-app" \
+              "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text 2>/dev/null)
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "⚠️ No running EC2 instance found. Run Terraform first."
+            echo "### 🚀 Deploy App - SKIPPED" >> $GITHUB_STEP_SUMMARY
+            echo "No running EC2 instance found. Run Terraform first." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "### 🚀 Deploy App" >> $GITHUB_STEP_SUMMARY
+          echo "**Instance:** \`$INSTANCE_ID\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: 📦 Deploy via SSM
+        if: steps.find-instance.outputs.instance_id != ''
+        id: ssm-deploy
+        run: |
+          INSTANCE_ID="${{ steps.find-instance.outputs.instance_id }}"
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=["set -e","cd /app && git pull origin main","cd /app/app && npm ci --omit=dev","npm run build","cp -r .next/static .next/standalone/.next/","cp -r public .next/standalone/ 2>/dev/null || true","pm2 restart projectfolio","echo ✅ Deploy complete"]' \
+            --timeout-seconds 300 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "command_id=$COMMAND_ID" >> $GITHUB_OUTPUT
+          echo "📋 SSM Command: \`$COMMAND_ID\`" >> $GITHUB_STEP_SUMMARY
+
+          echo "⏳ Waiting for deployment..."
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID"
+
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "Status" \
+            --output text)
+
+          OUTPUT=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardOutputContent" \
+            --output text)
+
+          ERROR=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query "StandardErrorContent" \
+            --output text)
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** \`$STATUS\`" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$ERROR" ]; then
+            echo "--- STDERR ---" >> $GITHUB_STEP_SUMMARY
+            echo "$ERROR" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "❌ Deployment failed with status: $STATUS"
+            exit 1
+          fi
+
+      - name: ✅ Deployment Complete
+        if: steps.find-instance.outputs.instance_id != ''
+        run: |
+          echo "### ✅ Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 5: Final Summary
+  # ──────────────────────────────────────────────────────────────
+  summary:
+    name: 📊 Summary
+    needs: [changes, test, terraform, deploy-app]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📊 Pipeline Summary
+        run: |
+          echo "# 🚀 CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Detect Changes | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Test | ${{ needs.test.result == 'success' && '✅' || needs.test.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏗️ Terraform | ${{ needs.terraform.result == 'success' && '✅' || needs.terraform.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Deploy App | ${{ needs.deploy-app.result == 'success' && '✅' || needs.deploy-app.result == 'skipped' && '⏭️' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Actor:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

@@ -27,3 +27,14 @@ output "instance_id" {
   description = "The ID of the EC2 instance"
   value       = aws_instance.app.id
 }
+
+output "github_actions_access_key_id" {
+  description = "AWS_ACCESS_KEY_ID for GitHub Actions secret"
+  value       = aws_iam_access_key.github_actions.id
+}
+
+output "github_actions_secret_access_key" {
+  description = "AWS_SECRET_ACCESS_KEY for GitHub Actions secret"
+  value       = aws_iam_access_key.github_actions.secret
+  sensitive   = true
+}

@@ -1,6 +1,6 @@
-# Competitor Tracker
+# ProjectFolio
 
-> **A full-stack, cloud-native competitor monitoring platform** — Track pricing, features, and content changes across competitor websites with automated text and visual diffing.
+> **A full-stack, cloud-native portfolio platform** — Developers showcase projects, discover others' work, and get noticed.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-000000?logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -12,23 +12,21 @@
 
 ## ✨ Features
 
-- **Automated Monitoring** — Track competitor web pages hourly, daily, or weekly
-- **Smart Diff Engine** — Unified text diff with added/removed line highlighting
-- **Visual Screenshots** — Full-page screenshots with pixel-level visual comparison
-- **Change History** — Complete timeline of all detected changes
+- **Developer Profiles** — Create portfolios with avatar, display name, and project showcase
+- **Project Showcase** — Add projects with title, description, tech stack, GitHub/live URLs
 - **JWT Authentication** — Secure HttpOnly cookie-based auth
-- **Production Infrastructure** — ALB + ASG on AWS via Terraform
+- **Serverless API** — Lambda functions for auth and project CRUD operations
+- **Production Infrastructure** — ALB + EC2 on AWS via Terraform
 
 ## 🏗 Architecture
 
 | Layer | Technology |
 |-------|-----------|
 | **Frontend** | Next.js 14 (App Router), TypeScript, Tailwind CSS |
-| **Backend** | Next.js API Routes, node-postgres, JWT, bcrypt |
-| **Browser Automation** | Puppeteer, pixelmatch, pngjs |
+| **Backend** | Lambda API + Next.js API Routes, PostgreSQL, JWT, bcrypt |
 | **Database** | AWS RDS PostgreSQL |
-| **Storage** | AWS S3 (snapshots, screenshots) |
-| **Compute** | AWS EC2 (Auto Scaling Group) |
+| **Storage** | AWS S3 (snapshots) |
+| **Compute** | AWS EC2 |
 | **Load Balancer** | AWS ALB |
 | **Infrastructure** | Terraform (HCL) |
 | **Process Manager** | PM2 |
@@ -50,6 +48,21 @@ cp .env.local.example .env.local
 # Run development server
 npm run dev
 ```
+
+## ☁️ AWS Services Deployed
+
+| Service | Purpose |
+|---------|---------|
+| **VPC** | Isolated network with public/private subnets |
+| **EC2** | App server with Launch Template |
+| **ALB** | Application Load Balancer (HTTP/HTTPS) |
+| **RDS** | PostgreSQL database (db.t3.micro) |
+| **Lambda** | Serverless API functions (7 total) |
+| **API Gateway** | REST API endpoint |
+| **S3** | Snapshots bucket with versioning |
+| **IAM** | EC2/Lambda role-based access |
+| **CloudWatch** | Logs, metrics, CPU alarms |
+| **VPC Endpoints** | Private CloudWatch access |
 
 ## ☁️ Deploy to AWS
 
@@ -73,33 +86,29 @@ For a **detailed 13-section architecture report** covering the system design, in
 
 ## 🛠 Tech Stack
 
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, Inter + JetBrains Mono fonts
-- **Backend**: Next.js API Routes, PostgreSQL (node-postgres), JWT (jsonwebtoken), bcrypt
-- **Automation**: Puppeteer (headless Chrome), pixelmatch (visual diff), pngjs
-- **Infrastructure**: Terraform, AWS (EC2, ALB, RDS, S3, CloudWatch, IAM)
-- **Deployment**: GitHub Actions, AWS SSM, PM2
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
+- **Backend**: Lambda API (Node.js), PostgreSQL, JWT, bcrypt
+- **Infrastructure**: Terraform, AWS (VPC, EC2, ALB, RDS, S3, Lambda, API Gateway, IAM, CloudWatch)
 
 ## 📬 API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/auth/signup` | Create account |
-| POST | `/api/auth/login` | Sign in |
-| GET | `/api/health` | Health check |
-| GET | `/api/tracked-pages` | List tracked pages |
-| POST | `/api/tracked-pages` | Add page to track |
-| DELETE | `/api/tracked-pages/:id` | Remove page |
-| GET | `/api/tracked-pages/:id/changes` | Change history |
-| POST | `/api/tracked-pages/:id/check-now` | Trigger check |
-| GET | `/api/tracked-pages/:id/visual-diff` | Visual diff image |
+| POST | `/auth/signup` | Create account |
+| POST | `/auth/login` | Sign in |
+| GET | `/projects` | List all projects |
+| GET | `/projects/{id}` | Get single project |
+| POST | `/projects` | Create project |
+| DELETE | `/projects/{id}` | Delete project |
+| GET | `/users/{id}` | Get user profile |
 
 ## 📊 Database Schema
 
 ```
-users → tracked_pages → snapshots → changes
-                             ↓
-                           S3 Bucket (HTML + screenshots)
+users → projects
 ```
+
+Each project has: title, description, tech_stack, github_url, live_url, image_url, featured
 
 ## 🧪 Tests
 
@@ -107,7 +116,7 @@ users → tracked_pages → snapshots → changes
 cd app && npm test
 ```
 
-11 tests covering the scraper/diff engine.
+Tests for authentication and database utilities.
 
 ## 📄 License
 

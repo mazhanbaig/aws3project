@@ -1,0 +1,88 @@
+data "aws_ami" "amazon_linux_2023" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+}
+
+resource "aws_launch_template" "app" {
+  name_prefix            = "competitor-tracker-lt-"
+  image_id               = data.aws_ami.amazon_linux_2023.id
+  instance_type          = var.instance_type
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2.name
+  }
+
+  vpc_security_group_ids = [aws_security_group.ec2.id]
+
+  user_data = base64encode(templatefile("${path.module}/scripts/user-data.sh.tpl", {
+    app_repo_url   = var.app_repo_url
+    api_gateway_url = "https://${aws_api_gateway_rest_api.api.id}.execute-api.${var.aws_region}.amazonaws.com/prod"
+  }))
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = 30
+      volume_type           = "gp3"
+      delete_on_termination = true
+    }
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "competitor-tracker-app"
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_instance" "app" {
+  launch_template {
+    id      = aws_launch_template.app.id
+    version = "$Latest"
+  }
+
+  subnet_id = aws_subnet.public_a.id
+
+  tags = {
+    Name = "competitor-tracker-app"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Attach the EC2 instance to the ALB target group
+resource "aws_lb_target_group_attachment" "app" {
+  target_group_arn = aws_lb_target_group.app.arn
+  target_id        = aws_instance.app.id
+  port             = 3001
+}
+
+resource "aws_eip" "app" {
+  domain = "vpc"
+
+  tags = {
+    Name = "competitor-tracker-eip"
+  }
+}
+
+resource "aws_eip_association" "app" {
+  instance_id   = aws_instance.app.id
+  allocation_id = aws_eip.app.id
+}

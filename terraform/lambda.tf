@@ -38,17 +38,6 @@ resource "aws_security_group" "lambda" {
   tags = { Name = "projectfolio-lambda-sg" }
 }
 
-# Allow Lambda SG to access RDS
-resource "aws_security_group_rule" "rds_ingress_lambda" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.rds.id
-  source_security_group_id = aws_security_group.lambda.id
-  description              = "PostgreSQL from Lambda"
-}
-
 # Lambda deployment package
 data "archive_file" "lambdas" {
   type        = "zip"
@@ -72,6 +61,7 @@ locals {
     "projects-create" = { handler = "projects-create/index.handler" }
     "projects-get"   = { handler = "projects-get/index.handler" }
     "projects-delete" = { handler = "projects-delete/index.handler" }
+    "users-get"        = { handler = "users-get/index.handler" }
   }
 }
 
@@ -85,8 +75,9 @@ resource "aws_lambda_function" "this" {
   timeout       = 30
   memory_size   = 256
 
-  s3_bucket = aws_s3_bucket.snapshots.id
-  s3_key    = aws_s3_object.lambdas.key
+  s3_bucket        = aws_s3_bucket.snapshots.id
+  s3_key           = aws_s3_object.lambdas.key
+  source_code_hash = data.archive_file.lambdas.output_base64sha256
 
   vpc_config {
     subnet_ids         = [aws_subnet.private_a.id, aws_subnet.private_c.id]
@@ -144,6 +135,18 @@ resource "aws_api_gateway_resource" "project" {
   path_part   = "{id}"
 }
 
+resource "aws_api_gateway_resource" "users" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "users"
+}
+
+resource "aws_api_gateway_resource" "user" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_resource.users.id
+  path_part   = "{id}"
+}
+
 # Lambda permissions
 resource "aws_lambda_permission" "api" {
   for_each      = local.lambda_functions
@@ -163,6 +166,7 @@ locals {
     "projects-create" = { resource = aws_api_gateway_resource.projects.id, method = "POST", key = "projects-create" }
     "projects-get"   = { resource = aws_api_gateway_resource.project.id, method = "GET", key = "projects-get" }
     "projects-delete" = { resource = aws_api_gateway_resource.project.id, method = "DELETE", key = "projects-delete" }
+    "users-get"        = { resource = aws_api_gateway_resource.user.id, method = "GET", key = "users-get" }
   }
 }
 
@@ -191,6 +195,7 @@ locals {
     auth_login   = aws_api_gateway_resource.auth_login.id
     projects     = aws_api_gateway_resource.projects.id
     project      = aws_api_gateway_resource.project.id
+    user         = aws_api_gateway_resource.user.id
   }
 }
 
@@ -254,6 +259,7 @@ resource "aws_api_gateway_deployment" "api" {
       aws_api_gateway_method.route,
       aws_api_gateway_resource.auth,
       aws_api_gateway_resource.projects,
+      aws_api_gateway_resource.users,
     ]))
   }
 
