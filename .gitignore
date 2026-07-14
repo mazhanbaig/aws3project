@@ -1,23 +1,43 @@
+# Dependencies
+node_modules/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Terraform
 *.tfstate
 *.tfstate.backup
-.terraform/
-crash.log
-
+*.tfstate.*.backup
 terraform.tfvars
-
-.env.production
-
-.DS_Store
-.next/
-node_modules/
-terraform.exe
-next-env.d.ts
-*.tsbuildinfo
-terraform/lambdas.zip
+terraform/.terraform/
+*.tfplan
 tfplan
-# Terraform copy and AWS CLI
+
+# Terraform junk directories
 terraform copy/
 terraform/aws/
 terraform/awscliv2.zip
-terraform/terraform.tfstate.
+terraform/lambdas.zip
+terraform/.terraform.lock.hcl
+
+# Recordings
 recordings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
