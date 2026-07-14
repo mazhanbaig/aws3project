@@ -1,0 +1,7 @@
+﻿{
+  "InstanceIds": ["i-0aee5060f5c4a94b3"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": ["ps aux | grep node", "cat /var/log/cloud-init-output.log | tail -30"]
+  }
+}

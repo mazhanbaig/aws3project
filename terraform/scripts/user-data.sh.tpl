@@ -13,7 +13,6 @@ cd /app/app
 
 cat > .env.production << 'ENVEOF'
 NEXT_PUBLIC_API_URL=${api_gateway_url}
-PORT=3001
 ENVEOF
 
 npm install --no-audit --no-fund || exit 1
@@ -23,6 +22,7 @@ cp -r .next/static .next/standalone/.next/
 cp -r public .next/standalone/ 2>/dev/null || true
 cp .env.production .next/standalone/
 
+export PORT=3001
 pm2 start .next/standalone/server.js --name "projectfolio" --update-env
 pm2 save
 echo "[user-data] === ProjectFolio running on port 3001 ==="
