@@ -22,7 +22,6 @@ terraform copy/
 terraform/aws/
 terraform/awscliv2.zip
 terraform/lambdas.zip
-terraform/.terraform.lock.hcl
 
 # Recordings
 recordings/
