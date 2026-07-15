@@ -108,7 +108,6 @@ jobs:
     needs: changes
     if: needs.changes.outputs.terraform == 'true' || github.event.inputs.force_deploy == 'true'
     runs-on: ubuntu-latest
-    environment: production
     outputs:
       app_url: ${{ steps.output-url.outputs.app_url }}
       api_url: ${{ steps.output-url.outputs.api_url }}
