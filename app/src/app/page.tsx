@@ -55,7 +55,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-6 pt-24 pb-20 md:pb-28 text-center relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-medium mb-8 animate-fade-in">
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse-slow" />
-            Showcase your work to the world
+            Build, share, and inspire — your projects matter
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-gray-900 leading-[1.08] mb-6 animate-slide-up">
             Where developers{' '}
